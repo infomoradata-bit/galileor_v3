@@ -27,7 +27,6 @@ export function SummaryBoxes({
   const showVal = (n: number, formatted: string) => (isNew && n === 0 ? "—" : formatted);
 
   const phase1 = input.interestPhases[0];
-  const phase2 = input.interestPhases[1];
 
   const shouldTotal =
     input.estimatedMarketValue * (1 + a.acquisition.closingCostsPctOfPrice / 100) +
@@ -160,22 +159,6 @@ export function SummaryBoxes({
             fmtPct(phase1?.ratePct ?? 0, 2)
           )}
         </Row>
-        <Row label="Rate type" tip="Duration of the first fixed-rate phase.">
-          {isEditing(2) ? (
-            <NumField
-              value={phase1?.years ?? 10}
-              step={1}
-              suffix="y fixed"
-              onChange={(v) =>
-                onChange({
-                  interestPhases: input.interestPhases.map((p, i) => (i === 0 ? { ...p, years: v } : p)),
-                })
-              }
-            />
-          ) : (
-            `Fixed ${phase1?.years ?? 10}Y`
-          )}
-        </Row>
         <Row label="Loan-to-value" bold>
           {fmtPct(a.acquisition.loanToValuePct, 1)}
         </Row>
@@ -188,13 +171,6 @@ export function SummaryBoxes({
             <NumField blankWhenZero={isNew} value={input.loanTermYears} step={1} suffix="years" onChange={(v) => onChange({ loanTermYears: v })} />
           ) : (
             `${input.loanTermYears} years`
-          )}
-        </Row>
-        <Row label="Interest-only period" tip="Years during which only interest is paid (no amortization).">
-          {isEditing(3) ? (
-            <NumField blankWhenZero={isNew} value={input.interestOnlyYears} step={1} suffix="years" onChange={(v) => onChange({ interestOnlyYears: v })} />
-          ) : (
-            `${input.interestOnlyYears} years`
           )}
         </Row>
         <Row label="Mortgage system" tip="Annuity: fixed payment. Constant: fixed principal + interest.">
@@ -214,21 +190,9 @@ export function SummaryBoxes({
           )}
         </Row>
         <div className="my-1.5 h-px bg-line-soft" />
-        <Row label="Monthly payment" bold tip="Full principal & interest payment once amortization starts.">
-          {input.interestOnlyYears > 0
-            ? fmtMoney(a.mortgage.monthlyPaymentAfterInterestOnly, cur)
-            : fmtMoney(a.mortgage.initialMonthlyPayment, cur)}
+        <Row label="Monthly payment" bold tip="Principal and interest on the remaining balance each month.">
+          {fmtMoney(a.mortgage.initialMonthlyPayment, cur)}
         </Row>
-        {input.interestOnlyYears > 0 && (
-          <>
-            <p className="py-0.5 text-[11px] text-sage">
-              Principal &amp; interest starts from year {input.interestOnlyYears + 1}
-            </p>
-            <Row label="Interest-only (now)" tip="Payment during the interest-only period.">
-              {fmtMoney(a.mortgage.initialMonthlyPayment, cur)}
-            </Row>
-          </>
-        )}
         <Row label="Payoff in year" tip="Year in which the loan balance reaches zero.">
           {a.mortgage.payoffYear ? String(new Date().getFullYear() + a.mortgage.payoffYear) : "> 50y"}
         </Row>
@@ -257,11 +221,11 @@ export function SummaryBoxes({
             fmtMoney(a.cashflow.maintenanceMonthly * 12, cur)
           )}
         </Row>
-        <Row label="HOA / Nebenkosten" tip="Non-recoverable ancillary costs per year.">
+        <Row label="HOA / Nebenkosten" tip="Non-recoverable ancillary costs per month.">
           {isEditing(4) ? (
             <NumField blankWhenZero={isNew} value={input.nebenkostenMonthly} step={10} onChange={(v) => onChange({ nebenkostenMonthly: v })} />
           ) : (
-            fmtMoney(input.nebenkostenMonthly * 12, cur)
+            fmtMoney(input.nebenkostenMonthly, cur)
           )}
         </Row>
         <Row label="Property tax" tip="Annual property tax.">
@@ -315,11 +279,26 @@ export function SummaryBoxes({
             `${fmtMoney(input.monthlyRent, cur)} / mo`
           )}
         </Row>
+        <Row label="Increase rent per year" tip="Annual rent growth used for the Renting cost line in Wealth Development.">
+          {isEditing(5) ? (
+            <NumField blankWhenZero={isNew} value={input.rentGrowthPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ rentGrowthPct: v })} />
+          ) : (
+            `${fmtNumber(input.rentGrowthPct, cur, 1)} % / year`
+          )}
+        </Row>
         <Row label="Vacancy" tip="Expected vacancy as % of rent.">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.vacancyPct} step={0.5} suffix="%" onChange={(v) => onChange({ vacancyPct: v })} />
           ) : (
             fmtPct(input.vacancyPct)
+          )}
+        </Row>
+        <p className="mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-sage">Stock market</p>
+        <Row label="Estimated return per year" tip="Expected annual return if capital were invested in the stock market instead (used in Rent & Invest).">
+          {isEditing(5) ? (
+            <NumField blankWhenZero={isNew} value={input.investmentReturnPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ investmentReturnPct: v })} />
+          ) : (
+            `${fmtNumber(input.investmentReturnPct, cur, 1)} % / year`
           )}
         </Row>
         <div className="my-1.5 h-px bg-line-soft" />

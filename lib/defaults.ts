@@ -79,15 +79,28 @@ export function blankInput(): CalculationInput {
   };
 }
 
+/** Default placeholder address shown for new deals until edited. */
+export const SAMPLE_ADDRESS = {
+  name: "Muster Adresse",
+  address: "Musterstrasse 1",
+  zip: "8000",
+  city: "Zürich",
+} as const;
+
+export function formatDealAddress(deal: Pick<Deal, "address" | "zip" | "city" | "country">): string {
+  const parts = [deal.address, [deal.zip, deal.city].filter(Boolean).join(" "), deal.country].filter(Boolean);
+  return parts.join(", ");
+}
+
 /** A new deal with no pre-filled assumptions — for inline creation in the metrics view. */
 export function blankDeal(country: Country = "CH"): Deal {
   const now = Date.now();
   return {
     id: crypto.randomUUID(),
-    name: "",
-    address: "",
-    zip: "",
-    city: "",
+    name: SAMPLE_ADDRESS.name,
+    address: SAMPLE_ADDRESS.address,
+    zip: SAMPLE_ADDRESS.zip,
+    city: SAMPLE_ADDRESS.city,
     country,
     currency: country === "CH" ? "CHF" : "EUR",
     propertyType: "Apartment",
@@ -162,7 +175,7 @@ export const SEED_DEALS: Deal[] = [
         { years: 15, ratePct: 3.7 },
       ],
       loanTermYears: 25,
-      interestOnlyYears: 10,
+      interestOnlyYears: 0,
       monthlyRent: 2_450,
       additionalIncomeMonthly: 0,
       vacancyPct: 3,

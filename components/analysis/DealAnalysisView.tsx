@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { updateDeal, upsertDeal } from "@/lib/store";
 import { analyzeDeal, isBlankDeal } from "@/lib/engine";
 import { fmtMoney, fmtPct, fmtYears } from "@/lib/format";
+import { formatDealAddress } from "@/lib/defaults";
 import type { CalculationInput, Deal } from "@/lib/types";
 import { Pill } from "@/components/ui";
 import { AnalysisHeader } from "@/components/analysis/AnalysisHeader";
@@ -57,15 +57,32 @@ export function DealAnalysisView({
   const [deal, setDeal] = useState(dealProp);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [shared, setShared] = useState(false);
+  const [addressEditing, setAddressEditing] = useState(false);
 
   useEffect(() => {
     setDeal(dealProp);
+    setAddressEditing(false);
   }, [dealProp.id]);
 
   const blank = isBlankDeal(deal.input);
   const analysis = useMemo(() => analyzeDeal(deal.input), [deal.input]);
   const cur = deal.currency;
   const a = analysis;
+  const maxAnalysisYear = a.rentVsBuy.length;
+  const [analysisYear, setAnalysisYear] = useState(1);
+
+  useEffect(() => {
+    setAnalysisYear(Math.min(10, Math.max(maxAnalysisYear, 1)));
+  }, [deal.id]);
+
+  useEffect(() => {
+    setAnalysisYear((current) => Math.min(Math.max(current, 1), Math.max(maxAnalysisYear, 1)));
+  }, [maxAnalysisYear]);
+
+  const clampedAnalysisYear = Math.min(
+    Math.max(analysisYear, 1),
+    Math.max(maxAnalysisYear, 1)
+  );
 
   function persist(next: Deal) {
     setDeal(next);
@@ -153,7 +170,7 @@ export function DealAnalysisView({
         {/* Property title */}
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            {isNew ? (
+            {addressEditing ? (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <input
@@ -162,7 +179,14 @@ export function DealAnalysisView({
                     value={deal.name}
                     onChange={(e) => patchDeal({ name: e.target.value })}
                   />
-                  <Pill tone="amber">Draft</Pill>
+                  <Pill tone={isNew ? "amber" : "positive"}>{isNew ? "Draft" : "Active"}</Pill>
+                  <button
+                    type="button"
+                    onClick={() => setAddressEditing(false)}
+                    className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-pine-deep"
+                  >
+                    Done
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <input
@@ -224,26 +248,34 @@ export function DealAnalysisView({
                 </div>
               </div>
             ) : (
-              <>
+              <div>
                 <div className="flex items-center gap-2.5">
                   <h1
                     className={`font-semibold tracking-tight text-ink ${
                       embedded ? "text-lg" : "text-[22px]"
                     }`}
                   >
-                    {deal.name || deal.address || "Untitled deal"}
+                    {deal.name || deal.address || "Muster Adresse"}
                     {deal.city ? `, ${deal.city}` : ""}
                   </h1>
-                  <Pill tone="positive">Active</Pill>
+                  <Pill tone={isNew ? "amber" : "positive"}>{isNew ? "Draft" : "Active"}</Pill>
                 </div>
-                <p className="mt-1 text-[13px] text-moss">
-                  {deal.zip} {deal.city}
-                  {deal.city ? `, ${deal.country === "CH" ? "Switzerland" : "Germany"}` : ""}
-                  {deal.yearBuilt ? ` · Built ${deal.yearBuilt}` : ""}
-                  {deal.input.areaSqm ? ` · ${deal.input.areaSqm} m²` : ""}
-                  {deal.rooms ? ` · ${deal.rooms} rooms` : ""}
-                </p>
-              </>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <p className="text-[13px] text-moss">
+                    {formatDealAddress(deal)}
+                    {deal.yearBuilt ? ` · Built ${deal.yearBuilt}` : ""}
+                    {deal.input.areaSqm ? ` · ${deal.input.areaSqm} m²` : ""}
+                    {deal.rooms ? ` · ${deal.rooms} rooms` : ""}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setAddressEditing(true)}
+                    className="rounded-lg border border-line bg-card px-3 py-1 text-xs font-medium text-moss transition-colors hover:border-sage hover:text-ink"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-sage">
@@ -268,14 +300,6 @@ export function DealAnalysisView({
                   Export PDF
                 </button>
               </>
-            )}
-            {!isNew && (
-              <Link
-                href={`/deals/${deal.id}/edit`}
-                className="rounded-lg border border-line bg-card px-3 py-1.5 font-medium text-moss transition-colors hover:border-sage hover:text-ink"
-              >
-                Edit deal
-              </Link>
             )}
           </div>
         </div>
@@ -308,23 +332,30 @@ export function DealAnalysisView({
 
         {/* Wealth chart */}
         <div className="mb-4">
-          <WealthChart wealth={a.wealth} currency={cur} />
+          <WealthChart
+            wealth={a.wealth}
+            currency={cur}
+            selectedYear={clampedAnalysisYear}
+            onYearSelect={setAnalysisYear}
+          />
         </div>
 
-        {/* Decision analysis + recommendation */}
-        <div className="grid gap-4 xl:grid-cols-3">
-          <div className="xl:col-span-2">
-            <DecisionAnalysis
-              analysis={a}
-              currency={cur}
-              investmentReturnPct={deal.input.investmentReturnPct}
-            />
-          </div>
-          <div className="flex flex-col gap-4">
-            <RecommendationCard analysis={a} />
-            <StressTestCard analysis={a} currency={cur} />
-            <NotesCard notes={deal.notes} onNotesChange={patchNotes} />
-          </div>
+        {/* Decision analysis */}
+        <div className="mb-4">
+          <DecisionAnalysis
+            analysis={a}
+            currency={cur}
+            investmentReturnPct={deal.input.investmentReturnPct}
+            year={clampedAnalysisYear}
+            onYearChange={setAnalysisYear}
+          />
+        </div>
+
+        {/* Recommendation, stress test, notes */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <RecommendationCard analysis={a} />
+          <StressTestCard analysis={a} currency={cur} />
+          <NotesCard notes={deal.notes} onNotesChange={patchNotes} />
         </div>
       </div>
     </div>

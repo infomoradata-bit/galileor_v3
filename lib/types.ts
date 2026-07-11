@@ -166,22 +166,35 @@ export interface WealthYearRow {
   equity: number;
   cumOwningCost: number;
   cumRentingCost: number;
+  monthlyRent: number;
+  monthlyOwningCost: number;
+  monthlyInterest: number;
+  monthlyPrincipal: number;
 }
 
 export interface RentVsBuyRow {
   year: number;
   monthlyRent: number;
   monthlyBuying: number;
+  monthlyOwningCost: number;
+  monthlyPrincipal: number;
+  monthlyInterest: number;
   cumRent: number;
   cumBuying: number;
+  cumOwningCost: number;
+  cumPrincipal: number;
+  cumInterest: number;
 }
 
 export interface BuySelfUseRow {
   year: number;
   downpayment: number;
   cumPrincipal: number;
+  /** Share of the original purchase price paid off (downpayment + principal). */
+  ownershipPctOfPurchase: number;
   cumInterest: number;
   cumOwningCost: number;
+  totalInvested: number;
   propertyValue: number;
   equity: number;
   investedAmount: number;
@@ -191,7 +204,11 @@ export interface BuySelfUseRow {
 
 export interface RentInvestRow {
   year: number;
+  downpaymentInvested: number;
+  downpaymentReturn: number;
   downpaymentFV: number;
+  buyRentSavingsInvested: number;
+  buyRentSavingsReturn: number;
   savingsFV: number;
   cumRent: number;
   cumNebenkosten: number;

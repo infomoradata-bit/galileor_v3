@@ -1,10 +1,41 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import type { Currency, DealAnalysis } from "@/lib/types";
 import { fmtCompact, fmtMoney, fmtPct } from "@/lib/format";
 import { InfoTip } from "@/components/ui";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+
+function SectionHeading({ children }: { children: ReactNode }) {
+  return (
+    <p className="mb-1 mt-3 first:mt-1 text-[11px] font-semibold uppercase tracking-wide text-ink">
+      {children}
+    </p>
+  );
+}
+
+function SubLine({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "positive" | "negative";
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-[3px] pl-3">
+      <span className="text-[11.5px] text-sage">{label}</span>
+      <span
+        className={`text-right text-[11.5px] tabular-nums font-medium ${
+          tone === "positive" ? "text-positive" : tone === "negative" ? "text-negative" : "text-moss"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function Line({
   label,
@@ -60,17 +91,21 @@ export function DecisionAnalysis({
   analysis,
   currency,
   investmentReturnPct,
+  year,
+  onYearChange,
 }: {
   analysis: DealAnalysis;
   currency: Currency;
   investmentReturnPct: number;
+  year: number;
+  onYearChange: (year: number) => void;
 }) {
   const maxYear = analysis.rentVsBuy.length;
-  const [year, setYear] = useState(Math.min(10, maxYear));
+  const activeYear = Math.min(Math.max(year, 1), Math.max(maxYear, 1));
 
-  const rvb = analysis.rentVsBuy[year - 1];
-  const bsu = analysis.buySelfUse[year - 1];
-  const rni = analysis.rentInvest[year - 1];
+  const rvb = analysis.rentVsBuy[activeYear - 1];
+  const bsu = analysis.buySelfUse[activeYear - 1];
+  const rni = analysis.rentInvest[activeYear - 1];
 
   const barData = analysis.mortgage.annual.map((r) => ({
     year: r.year,
@@ -99,7 +134,7 @@ export function DecisionAnalysis({
         <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
           Real Estate Decision Analysis
           <span className="rounded-md bg-line-soft px-2 py-0.5 text-[11px] font-medium text-moss">
-            Year {year}
+            Year {activeYear}
           </span>
         </h2>
         <div className="flex items-center gap-3">
@@ -107,13 +142,13 @@ export function DecisionAnalysis({
             type="range"
             min={1}
             max={maxYear}
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            value={activeYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
             className="h-1.5 w-44 cursor-pointer appearance-none rounded-full bg-line accent-[#1b3022]"
           />
           <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
+            value={activeYear}
+            onChange={(e) => onYearChange(Number(e.target.value))}
             className="rounded-lg border border-line bg-cream px-2.5 py-1.5 text-xs font-medium outline-none focus:border-pine"
           >
             {Array.from({ length: maxYear }, (_, i) => i + 1).map((y) => (
@@ -133,36 +168,53 @@ export function DecisionAnalysis({
           tip="Monthly and accumulated costs of renting the same property versus buying it."
         >
           <p className="mb-1 mt-1 text-[11px] font-medium uppercase tracking-wide text-sage">
-            Monthly (year {year})
+            Monthly (year {activeYear})
           </p>
           <Line label="Renting" value={fmtMoney(rvb.monthlyRent, currency)} tone="positive" />
           <Line label="Buying" value={fmtMoney(rvb.monthlyBuying, currency)} tone="negative" />
+          <SubLine label="Cost of owning" value={fmtMoney(rvb.monthlyOwningCost, currency)} tone="negative" />
+          <SubLine label="Principal" value={fmtMoney(rvb.monthlyPrincipal, currency)} />
+          <SubLine label="Interest" value={fmtMoney(rvb.monthlyInterest, currency)} tone="negative" />
+          <Line
+            label={rvb.monthlyBuying <= rvb.monthlyRent ? "Renting is cheaper by" : "Buying is cheaper by"}
+            value={fmtMoney(Math.abs(rvb.monthlyRent - rvb.monthlyBuying), currency)}
+            bold
+          />
           <p className="mb-1 mt-3 text-[11px] font-medium uppercase tracking-wide text-sage">
-            Accumulated ({year}Y)
+            Accumulated ({activeYear}Y)
           </p>
           <Line label="Renting" value={fmtMoney(rvb.cumRent, currency)} tone="positive" />
           <Line label="Buying" value={fmtMoney(rvb.cumBuying, currency)} tone="negative" />
-          <div className="mt-3 border-t border-line-soft pt-2">
-            <Line
-              label={rvb.cumBuying <= rvb.cumRent ? "Buying is cheaper by" : "Renting is cheaper by"}
-              value={fmtMoney(Math.abs(rvb.cumRent - rvb.cumBuying), currency)}
-              bold
-            />
-          </div>
+          <SubLine label="Cost of owning" value={fmtMoney(rvb.cumOwningCost, currency)} tone="negative" />
+          <SubLine label="Principal" value={fmtMoney(rvb.cumPrincipal, currency)} />
+          <SubLine label="Interest" value={fmtMoney(rvb.cumInterest, currency)} tone="negative" />
+          <Line
+            label={rvb.cumBuying <= rvb.cumRent ? "Renting is cheaper by" : "Buying is cheaper by"}
+            value={fmtMoney(Math.abs(rvb.cumRent - rvb.cumBuying), currency)}
+            bold
+          />
         </Col>
 
         {/* 2 — Buy & Self-Use */}
         <Col
           index={2}
           title="Buy & Self-Use"
-          tip="You live in the property yourself: no rental income, equity builds through principal payments and appreciation."
+          tip="You live in the property yourself: track what you invested, how much you own, and your equity return."
         >
+          <SectionHeading>Investment</SectionHeading>
           <Line label="Downpayment" value={fmtMoney(bsu.downpayment, currency)} />
-          <Line label="Principal paid" value={fmtMoney(bsu.cumPrincipal, currency)} />
+          <Line
+            label="Principal paid"
+            value={`${fmtMoney(bsu.cumPrincipal, currency)} (${fmtPct(bsu.ownershipPctOfPurchase, 1)} owned)`}
+          />
           <Line label="Interest paid" value={fmtMoney(bsu.cumInterest, currency)} tone="negative" />
           <Line label="Owning cost" value={fmtMoney(bsu.cumOwningCost, currency)} tone="negative" />
+          <Line label="Total invested" value={fmtMoney(bsu.totalInvested, currency)} bold />
+
+          <SectionHeading>Property value</SectionHeading>
           <Line label="Property value" value={fmtMoney(bsu.propertyValue, currency)} />
-          <Line label="Equity" value={fmtMoney(bsu.equity, currency)} tone="positive" />
+          <SubLine label="Equity" value={fmtMoney(bsu.equity, currency)} tone="positive" />
+
           <div className="mt-3 border-t border-line-soft pt-2">
             <Line
               label="ROI (annual)"
@@ -177,17 +229,19 @@ export function DecisionAnalysis({
         <Col
           index={3}
           title="Rent & Invest"
-          tip="You keep renting and invest the downpayment plus the monthly buy-rent difference in the capital market."
+          tip="You keep renting and invest the downpayment plus monthly savings when renting is cheaper than buying."
         >
-          <Line label="Invested downpayment" value={fmtMoney(rni.downpaymentFV, currency)} />
-          <Line label="Buy-rent savings" value={fmtMoney(rni.savingsFV, currency)} />
-          <Line
-            label={`Investment return (${investmentReturnPct.toFixed(1)}%)`}
-            value={fmtMoney(rni.investmentReturn, currency)}
+          <Line label="Invested downpayment" value={fmtMoney(rni.downpaymentInvested, currency)} />
+          <SubLine label="Downpayment return" value={fmtMoney(rni.downpaymentReturn, currency)} tone="positive" />
+          <Line label="Invested buy-rent savings" value={fmtMoney(rni.buyRentSavingsInvested, currency)} />
+          <SubLine
+            label="Buy-rent savings return"
+            value={fmtMoney(rni.buyRentSavingsReturn, currency)}
             tone="positive"
           />
           <Line label="Rent expenses" value={fmtMoney(rni.cumRent, currency)} tone="negative" />
           <div className="mt-3 border-t border-line-soft pt-2">
+            <Line label="Total capital" value={fmtMoney(rni.equityCapital, currency)} bold />
             <Line
               label="ROI (annual)"
               value={fmtPct(rni.roiAnnualPct)}

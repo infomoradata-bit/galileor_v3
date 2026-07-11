@@ -218,9 +218,6 @@ export function DealForm({ existing }: { existing?: Deal }) {
         <Field label="Loan term" suffix="years">
           <input type="number" className={inputCls} value={i.loanTermYears} onChange={(e) => patchIn({ loanTermYears: Math.round(num(e.target.value)) })} />
         </Field>
-        <Field label="Interest-only period" suffix="years">
-          <input type="number" className={inputCls} value={i.interestOnlyYears} onChange={(e) => patchIn({ interestOnlyYears: Math.round(num(e.target.value)) })} />
-        </Field>
       </Section>
 
       <Section title="Mortgage assumptions">

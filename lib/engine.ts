@@ -91,8 +91,6 @@ function annuityPayment(balance: number, monthlyRate: number, remainingMonths: n
 
 export function computeMortgage(input: CalculationInput, loanAmount: number): MortgageResult {
   const termMonths = Math.min(input.loanTermYears, MAX_YEARS) * 12;
-  const interestOnlyMonths = clamp(input.interestOnlyYears * 12, 0, termMonths);
-  const amortMonths = termMonths - interestOnlyMonths;
   const simMonths = MAX_YEARS * 12;
 
   const annual: AnnualDebtRow[] = [];
@@ -100,7 +98,6 @@ export function computeMortgage(input: CalculationInput, loanAmount: number): Mo
   let payment = 0;
   let currentRate = -1;
   let initialMonthlyPayment = 0;
-  let paymentAfterIO = 0;
   let totalInterest = 0;
   let totalPrincipal = 0;
   let payoffYear: number | null = null;
@@ -109,14 +106,12 @@ export function computeMortgage(input: CalculationInput, loanAmount: number): Mo
   let yPrincipal = 0;
   let yPayment = 0;
 
-  const constantPrincipal = amortMonths > 0 ? loanAmount / amortMonths : 0;
+  const constantPrincipal = termMonths > 0 ? loanAmount / termMonths : 0;
 
   for (let m = 0; m < simMonths; m++) {
     const rate = monthlyRateForMonth(input, m);
-    const inInterestOnly = m < interestOnlyMonths;
 
-    // Recompute the annuity when a phase starts or interest-only ends.
-    if (!inInterestOnly && (rate !== currentRate || m === interestOnlyMonths)) {
+    if (rate !== currentRate || m === 0) {
       const remaining = Math.max(termMonths - m, 1);
       payment = annuityPayment(balance, rate, remaining);
     }
@@ -127,9 +122,7 @@ export function computeMortgage(input: CalculationInput, loanAmount: number): Mo
 
     if (balance > 0.005) {
       interest = balance * rate;
-      if (inInterestOnly) {
-        principal = 0;
-      } else if (input.mortgageSystem === "constant") {
+      if (input.mortgageSystem === "constant") {
         principal = Math.min(constantPrincipal, balance);
       } else {
         principal = Math.min(Math.max(payment - interest, 0), balance);
@@ -138,7 +131,6 @@ export function computeMortgage(input: CalculationInput, loanAmount: number): Mo
     }
 
     if (m === 0) initialMonthlyPayment = interest + principal;
-    if (m === interestOnlyMonths) paymentAfterIO = interest + principal;
 
     totalInterest += interest;
     totalPrincipal += principal;
@@ -164,7 +156,7 @@ export function computeMortgage(input: CalculationInput, loanAmount: number): Mo
 
   return {
     initialMonthlyPayment,
-    monthlyPaymentAfterInterestOnly: paymentAfterIO || initialMonthlyPayment,
+    monthlyPaymentAfterInterestOnly: initialMonthlyPayment,
     annual,
     payoffYear,
     totalInterest,
@@ -334,24 +326,8 @@ export function computeMetrics(
 
   const priceRentRatio = annualRent > 0 ? input.purchasePrice / annualRent : 0;
 
-  // Payback: years to recover total investment from average annual wealth creation.
-  // During interest-only, use the amortization-phase average (more representative).
-  let paybackYears: number | null = null;
-  const ioEnd = input.interestOnlyYears;
-  if (ioEnd > 0 && ioEnd < mortgage.annual.length) {
-    let sum = 0;
-    let count = 0;
-    for (let t = ioEnd + 1; t <= Math.min(ioEnd + 8, mortgage.annual.length); t++) {
-      sum += annualWealthGrowthYear(input, mortgage, t);
-      count++;
-    }
-    const avgAmort = count > 0 ? sum / count : 0;
-    if (avgAmort > 0) paybackYears = acq.totalInvestment / avgAmort;
-  }
-  if (paybackYears === null && avgWealthGrowth > 0) {
-    paybackYears = acq.totalInvestment / avgWealthGrowth;
-  }
-  if (paybackYears === null) paybackYears = mortgage.payoffYear;
+  // Payback: year when remaining mortgage debt reaches zero.
+  const paybackYears = mortgage.payoffYear;
 
   return {
     grossYieldPct,
@@ -372,6 +348,31 @@ export function computeMetrics(
 // ---------------------------------------------------------------------------
 // 6. Wealth projection
 // ---------------------------------------------------------------------------
+function propertyValueYear(input: CalculationInput, yearT: number): number {
+  return input.purchasePrice * Math.pow(1 + input.appreciationPct / 100, yearT);
+}
+
+function maintenanceAnnualYear(input: CalculationInput, yearT: number): number {
+  return (propertyValueYear(input, yearT) * input.maintenancePctOfValue) / 100;
+}
+
+function monthlyFlowsForYear(
+  input: CalculationInput,
+  mortgage: MortgageResult,
+  yearT: number
+): Pick<WealthYearRow, "monthlyRent" | "monthlyOwningCost" | "monthlyInterest" | "monthlyPrincipal"> {
+  const t = Math.max(yearT, 1);
+  const monthlyRent = input.monthlyRent * Math.pow(1 + input.rentGrowthPct / 100, t - 1);
+  const monthlyOwningCost = owningCostAnnualYearT(input, t) / 12;
+  const debtRow = mortgage.annual[t - 1];
+  return {
+    monthlyRent,
+    monthlyOwningCost,
+    monthlyInterest: (debtRow?.interest ?? 0) / 12,
+    monthlyPrincipal: (debtRow?.principal ?? 0) / 12,
+  };
+}
+
 export function computeWealth(
   input: CalculationInput,
   acq: AcquisitionResult,
@@ -391,12 +392,13 @@ export function computeWealth(
     equity: input.purchasePrice - acq.mortgage,
     cumOwningCost: 0,
     cumRentingCost: 0,
+    ...monthlyFlowsForYear(input, mortgage, 0),
   });
 
   for (let t = 1; t <= years; t++) {
-    const value = input.purchasePrice * Math.pow(1 + input.appreciationPct / 100, t);
+    const value = propertyValueYear(input, t);
     const debt = mortgage.annual[t - 1]?.balanceEnd ?? 0;
-    cumOwning += owningCostAnnualYearT(input, t);
+    cumOwning += maintenanceAnnualYear(input, t);
     cumRenting += input.monthlyRent * 12 * Math.pow(1 + input.rentGrowthPct / 100, t - 1);
     rows.push({
       year: t,
@@ -406,6 +408,7 @@ export function computeWealth(
       equity: value - debt,
       cumOwningCost: cumOwning,
       cumRentingCost: cumRenting,
+      ...monthlyFlowsForYear(input, mortgage, t),
     });
   }
   return rows;
@@ -419,19 +422,33 @@ export function computeRentVsBuy(input: CalculationInput, mortgage: MortgageResu
   const rows: RentVsBuyRow[] = [];
   let cumRent = 0;
   let cumBuying = 0;
+  let cumOwningCost = 0;
+  let cumPrincipal = 0;
+  let cumInterest = 0;
   for (let t = 1; t <= years; t++) {
     const monthlyRent = input.monthlyRent * Math.pow(1 + input.rentGrowthPct / 100, t - 1);
     const debtRow = mortgage.annual[t - 1];
     const owningAnnual = owningCostAnnualYearT(input, t);
-    const buyingAnnual = owningAnnual + (debtRow?.interest ?? 0) + (debtRow?.principal ?? 0);
+    const interestAnnual = debtRow?.interest ?? 0;
+    const principalAnnual = debtRow?.principal ?? 0;
+    const buyingAnnual = owningAnnual + interestAnnual + principalAnnual;
     cumRent += monthlyRent * 12;
     cumBuying += buyingAnnual;
+    cumOwningCost += owningAnnual;
+    cumPrincipal += principalAnnual;
+    cumInterest += interestAnnual;
     rows.push({
       year: t,
       monthlyRent,
       monthlyBuying: buyingAnnual / 12,
+      monthlyOwningCost: owningAnnual / 12,
+      monthlyPrincipal: principalAnnual / 12,
+      monthlyInterest: interestAnnual / 12,
       cumRent,
       cumBuying,
+      cumOwningCost,
+      cumPrincipal,
+      cumInterest,
     });
   }
   return rows;
@@ -454,25 +471,28 @@ export function computeBuySelfUse(
     cumInterest += debtRow?.interest ?? 0;
     cumOwning += owningCostAnnualYearT(input, t);
 
-    const value = input.purchasePrice * Math.pow(1 + input.appreciationPct / 100, t);
+    const value = propertyValueYear(input, t);
     const ownershipShare =
       input.purchasePrice > 0
         ? clamp((acq.downpayment + cumPrincipal) / input.purchasePrice, 0, 1)
         : 0;
+    const ownershipPctOfPurchase = ownershipShare * 100;
     const equityT = ownershipShare * value;
-    const invested = Math.max(input.equity + cumInterest + cumOwning, 1);
-    const roiPct = ((equityT - invested) / invested) * 100;
-    const roiAnnualPct = (Math.pow(Math.max(equityT / invested, 0), 1 / t) - 1) * 100;
+    const totalInvested = acq.downpayment + cumPrincipal + cumInterest + cumOwning;
+    const roiPct = ((equityT - totalInvested) / Math.max(totalInvested, 1)) * 100;
+    const roiAnnualPct = (Math.pow(Math.max(equityT / Math.max(totalInvested, 1), 0), 1 / t) - 1) * 100;
 
     rows.push({
       year: t,
       downpayment: acq.downpayment,
       cumPrincipal,
+      ownershipPctOfPurchase,
       cumInterest,
       cumOwningCost: cumOwning,
+      totalInvested,
       propertyValue: value,
       equity: equityT,
-      investedAmount: invested,
+      investedAmount: totalInvested,
       roiPct,
       roiAnnualPct,
     });
@@ -482,11 +502,13 @@ export function computeBuySelfUse(
 
 export function computeRentInvest(
   input: CalculationInput,
+  acq: AcquisitionResult,
   mortgage: MortgageResult
 ): RentInvestRow[] {
   const years = clamp(input.projectionYears, 1, MAX_YEARS);
   const rows: RentInvestRow[] = [];
   const monthlyReturn = Math.pow(1 + input.investmentReturnPct / 100, 1 / 12) - 1;
+  const downpaymentInvested = acq.downpayment;
 
   let savingsFV = 0;
   let cumSavingsContrib = 0;
@@ -507,17 +529,25 @@ export function computeRentInvest(
     cumRent += monthlyRent * 12;
     cumNebenkosten += input.nebenkostenMonthly * 12 * Math.pow(1 + input.inflationPct / 100, t - 1);
 
-    const downpaymentFV = input.equity * Math.pow(1 + input.investmentReturnPct / 100, t);
+    const downpaymentFV = downpaymentInvested * Math.pow(1 + input.investmentReturnPct / 100, t);
+    const downpaymentReturn = downpaymentFV - downpaymentInvested;
+    const buyRentSavingsReturn = savingsFV - cumSavingsContrib;
     const equityCapital = downpaymentFV + savingsFV;
-    const investmentReturn = equityCapital - input.equity - cumSavingsContrib;
-    const invested = Math.max(input.equity + cumRent + cumNebenkosten, 1);
+    const investmentReturn = downpaymentReturn + buyRentSavingsReturn;
+    const invested = Math.max(downpaymentInvested + cumSavingsContrib + cumRent + cumNebenkosten, 1);
     const roiPct = ((equityCapital - invested) / invested) * 100;
     const roiAnnualPct =
-      (Math.pow(Math.max(equityCapital / Math.max(input.equity + cumSavingsContrib, 1), 0.0001), 1 / t) - 1) * 100;
+      (Math.pow(Math.max(equityCapital / Math.max(downpaymentInvested + cumSavingsContrib, 1), 0.0001), 1 / t) -
+        1) *
+      100;
 
     rows.push({
       year: t,
+      downpaymentInvested,
+      downpaymentReturn,
       downpaymentFV,
+      buyRentSavingsInvested: cumSavingsContrib,
+      buyRentSavingsReturn,
       savingsFV,
       cumRent,
       cumNebenkosten,
@@ -718,23 +748,26 @@ function emptyAnalysis(): DealAnalysis {
     components: [],
   };
   const year = new Date().getFullYear();
+  const emptyWealth: WealthYearRow = {
+    year: 0,
+    calendarYear: year,
+    propertyValue: 0,
+    debt: 0,
+    equity: 0,
+    cumOwningCost: 0,
+    cumRentingCost: 0,
+    monthlyRent: 0,
+    monthlyOwningCost: 0,
+    monthlyInterest: 0,
+    monthlyPrincipal: 0,
+  };
   return {
     acquisition: zeroAcq,
     mortgage: zeroMortgage,
     cashflow: zeroCashflow,
     stress: zeroStress,
     metrics: zeroMetrics,
-    wealth: [
-      {
-        year: 0,
-        calendarYear: year,
-        propertyValue: 0,
-        debt: 0,
-        equity: 0,
-        cumOwningCost: 0,
-        cumRentingCost: 0,
-      },
-    ],
+    wealth: [emptyWealth],
     rentVsBuy: [],
     buySelfUse: [],
     rentInvest: [],
@@ -756,7 +789,7 @@ export function analyzeDeal(input: CalculationInput): DealAnalysis {
   const wealth = computeWealth(input, acquisition, mortgage);
   const rentVsBuy = computeRentVsBuy(input, mortgage);
   const buySelfUse = computeBuySelfUse(input, acquisition, mortgage);
-  const rentInvest = computeRentInvest(input, mortgage);
+  const rentInvest = computeRentInvest(input, acquisition, mortgage);
   const shouldIs = computeShouldIs(input, acquisition);
   const score = computeScore(metrics, cashflow, stress, acquisition);
 

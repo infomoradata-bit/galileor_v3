@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useDeals } from "@/lib/store";
 import { analyzeDeal } from "@/lib/engine";
-import { blankDeal } from "@/lib/defaults";
+import { blankDeal, formatDealAddress } from "@/lib/defaults";
 import { fmtMoney, fmtPct } from "@/lib/format";
 import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { DealAnalysisView } from "@/components/analysis/DealAnalysisView";
@@ -97,7 +97,7 @@ export default function DealsPageContent() {
 
         <div className="flex-1 space-y-3 overflow-y-auto p-4">
           {isDraft && draftDeal && (
-            <DraftDealCard active onSelect={() => setSelectedId(DRAFT_DEAL_ID)} />
+            <DraftDealCard deal={draftDeal} active onSelect={() => setSelectedId(DRAFT_DEAL_ID)} />
           )}
           {filtered.map((deal) => (
             <DealCard
@@ -164,7 +164,15 @@ export default function DealsPageContent() {
   );
 }
 
-function DraftDealCard({ active, onSelect }: { active: boolean; onSelect: () => void }) {
+function DraftDealCard({
+  deal,
+  active,
+  onSelect,
+}: {
+  deal: Deal;
+  active: boolean;
+  onSelect: () => void;
+}) {
   return (
     <button
       type="button"
@@ -177,8 +185,8 @@ function DraftDealCard({ active, onSelect }: { active: boolean; onSelect: () => 
         <span className="text-sm font-medium text-moss">New deal</span>
       </div>
       <div className="space-y-1 bg-card p-3">
-        <p className="text-sm font-semibold text-moss">Blank analysis</p>
-        <p className="text-xs text-sage">Fill in the metrics on the right →</p>
+        <p className="text-sm font-semibold text-moss">{deal.name || "Muster Adresse"}</p>
+        <p className="truncate text-xs text-sage">{formatDealAddress(deal)}</p>
       </div>
     </button>
   );
