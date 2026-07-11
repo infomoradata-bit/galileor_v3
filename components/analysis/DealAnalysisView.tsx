@@ -1,0 +1,332 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { updateDeal, upsertDeal } from "@/lib/store";
+import { analyzeDeal, isBlankDeal } from "@/lib/engine";
+import { fmtMoney, fmtPct, fmtYears } from "@/lib/format";
+import type { CalculationInput, Deal } from "@/lib/types";
+import { Pill } from "@/components/ui";
+import { AnalysisHeader } from "@/components/analysis/AnalysisHeader";
+import { KpiCard, kpiIcons } from "@/components/analysis/KpiCard";
+import { SummaryBoxes } from "@/components/analysis/SummaryBoxes";
+import { WealthChart } from "@/components/analysis/WealthChart";
+import { DecisionAnalysis } from "@/components/analysis/DecisionAnalysis";
+import {
+  RecommendationCard,
+  StressTestCard,
+  NotesCard,
+} from "@/components/analysis/BottomSection";
+
+function labelForPayback(years: number | null): { text: string; tone: "positive" | "amber" | "negative" } {
+  if (years === null) return { text: "Open-ended", tone: "negative" };
+  if (years <= 18) return { text: "Good", tone: "positive" };
+  if (years <= 25) return { text: "Fair", tone: "amber" };
+  return { text: "Long", tone: "negative" };
+}
+
+function labelForReturn(pct: number): { text: string; tone: "positive" | "amber" | "negative" } {
+  if (pct >= 5) return { text: "Excellent", tone: "positive" };
+  if (pct >= 3) return { text: "Good", tone: "positive" };
+  if (pct >= 1) return { text: "Fair", tone: "amber" };
+  return { text: "Low", tone: "negative" };
+}
+
+function labelForRoe(pct: number): { text: string; tone: "positive" | "amber" | "negative" } {
+  if (pct >= 8) return { text: "Very Good", tone: "positive" };
+  if (pct >= 5) return { text: "Good", tone: "positive" };
+  if (pct >= 2) return { text: "Fair", tone: "amber" };
+  return { text: "Weak", tone: "negative" };
+}
+
+const inputCls =
+  "rounded-lg border border-line bg-cream px-3 py-2 text-sm outline-none placeholder:text-sage focus:border-pine";
+
+export function DealAnalysisView({
+  deal: dealProp,
+  embedded = false,
+  isNew = false,
+  onPersist,
+}: {
+  deal: Deal;
+  embedded?: boolean;
+  isNew?: boolean;
+  /** Called when a new deal is first saved to the store. */
+  onPersist?: (deal: Deal) => void;
+}) {
+  const [deal, setDeal] = useState(dealProp);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [shared, setShared] = useState(false);
+
+  useEffect(() => {
+    setDeal(dealProp);
+  }, [dealProp.id]);
+
+  const blank = isBlankDeal(deal.input);
+  const analysis = useMemo(() => analyzeDeal(deal.input), [deal.input]);
+  const cur = deal.currency;
+  const a = analysis;
+
+  function persist(next: Deal) {
+    setDeal(next);
+    if (isNew) {
+      upsertDeal(next);
+      onPersist?.(next);
+    } else {
+      upsertDeal(next);
+    }
+    setSavedAt(Date.now());
+  }
+
+  function patchInput(patch: Partial<CalculationInput>) {
+    persist({ ...deal, input: { ...deal.input, ...patch } });
+  }
+
+  function patchDeal(patch: Partial<Deal>) {
+    persist({ ...deal, ...patch });
+  }
+
+  function patchNotes(notes: string) {
+    patchDeal({ notes });
+  }
+
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  }
+
+  const dash = "—";
+  const payback = blank ? null : labelForPayback(a.metrics.paybackYears);
+  const rtr = blank ? null : labelForReturn(a.metrics.realTotalReturn10Y);
+  const roe = blank ? null : labelForRoe(a.metrics.returnOnEquity10Y);
+
+  const kpis = [
+    {
+      icon: kpiIcons.purchase,
+      title: "Purchase Price (Should / Is)",
+      value: blank ? dash : fmtMoney(deal.input.purchasePrice, cur),
+      sub: blank ? dash : `Should: ${fmtMoney(deal.input.estimatedMarketValue, cur)}`,
+    },
+    {
+      icon: kpiIcons.closing,
+      title: "Price + Closing Costs",
+      value: blank ? dash : fmtMoney(a.acquisition.totalInvestment, cur),
+      sub: blank ? dash : `${fmtPct(a.acquisition.closingCostsPctOfPrice, 1)} of purchase price`,
+    },
+    {
+      icon: kpiIcons.payback,
+      title: "Payback Period",
+      value: blank ? dash : fmtYears(a.metrics.paybackYears, 1),
+      badge: payback ?? undefined,
+    },
+    {
+      icon: kpiIcons.return_,
+      title: "Real Total Return (10Y)",
+      value: blank ? dash : fmtPct(a.metrics.realTotalReturn10Y, 1),
+      badge: rtr ?? undefined,
+    },
+    {
+      icon: kpiIcons.roe,
+      title: "Return on Equity (10Y)",
+      value: blank ? dash : fmtPct(a.metrics.returnOnEquity10Y, 1),
+      sub: roe?.text,
+      grade: blank ? undefined : a.metrics.roeGrade,
+    },
+  ];
+
+  return (
+    <div className={embedded ? "bg-cream" : "min-h-screen bg-cream"}>
+      <div
+        className={
+          embedded
+            ? "px-4 py-4 lg:px-6 lg:py-5"
+            : "mx-auto max-w-[1440px] px-5 py-5 lg:px-8 lg:py-6"
+        }
+      >
+        {!embedded && <AnalysisHeader onShare={share} shared={shared} />}
+
+        {/* Property title */}
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {isNew ? (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <input
+                    className={`${inputCls} min-w-[200px] flex-1 font-semibold`}
+                    placeholder="Property name"
+                    value={deal.name}
+                    onChange={(e) => patchDeal({ name: e.target.value })}
+                  />
+                  <Pill tone="amber">Draft</Pill>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    className={`${inputCls} min-w-[140px] flex-1`}
+                    placeholder="Address"
+                    value={deal.address}
+                    onChange={(e) => patchDeal({ address: e.target.value })}
+                  />
+                  <input
+                    className={`${inputCls} w-20`}
+                    placeholder="ZIP"
+                    value={deal.zip}
+                    onChange={(e) => patchDeal({ zip: e.target.value })}
+                  />
+                  <input
+                    className={`${inputCls} min-w-[120px] flex-1`}
+                    placeholder="City"
+                    value={deal.city}
+                    onChange={(e) => patchDeal({ city: e.target.value })}
+                  />
+                  <select
+                    className={inputCls}
+                    value={deal.country}
+                    onChange={(e) => {
+                      const country = e.target.value as Deal["country"];
+                      patchDeal({
+                        country,
+                        currency: country === "CH" ? "CHF" : "EUR",
+                      });
+                    }}
+                  >
+                    <option value="CH">CH</option>
+                    <option value="DE">DE</option>
+                  </select>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[13px]">
+                  <input
+                    type="number"
+                    className={`${inputCls} w-28`}
+                    placeholder="Year built"
+                    value={deal.yearBuilt || ""}
+                    onChange={(e) => patchDeal({ yearBuilt: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    className={`${inputCls} w-24`}
+                    placeholder="m²"
+                    value={deal.input.areaSqm || ""}
+                    onChange={(e) => patchInput({ areaSqm: Number(e.target.value) || 0 })}
+                  />
+                  <input
+                    type="number"
+                    step="0.5"
+                    className={`${inputCls} w-24`}
+                    placeholder="Rooms"
+                    value={deal.rooms || ""}
+                    onChange={(e) => patchDeal({ rooms: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2.5">
+                  <h1
+                    className={`font-semibold tracking-tight text-ink ${
+                      embedded ? "text-lg" : "text-[22px]"
+                    }`}
+                  >
+                    {deal.name || deal.address || "Untitled deal"}
+                    {deal.city ? `, ${deal.city}` : ""}
+                  </h1>
+                  <Pill tone="positive">Active</Pill>
+                </div>
+                <p className="mt-1 text-[13px] text-moss">
+                  {deal.zip} {deal.city}
+                  {deal.city ? `, ${deal.country === "CH" ? "Switzerland" : "Germany"}` : ""}
+                  {deal.yearBuilt ? ` · Built ${deal.yearBuilt}` : ""}
+                  {deal.input.areaSqm ? ` · ${deal.input.areaSqm} m²` : ""}
+                  {deal.rooms ? ` · ${deal.rooms} rooms` : ""}
+                </p>
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-sage">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {savedAt ? "Saved just now" : isNew ? "Not saved yet" : "All changes saved"}
+            </span>
+            {embedded && !isNew && (
+              <>
+                <button
+                  type="button"
+                  onClick={share}
+                  className="rounded-lg border border-line bg-card px-3 py-1.5 font-medium text-moss transition-colors hover:border-sage hover:text-ink"
+                >
+                  {shared ? "Copied ✓" : "Share"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="rounded-lg bg-pine px-3 py-1.5 font-medium text-white transition-colors hover:bg-pine-deep"
+                >
+                  Export PDF
+                </button>
+              </>
+            )}
+            {!isNew && (
+              <Link
+                href={`/deals/${deal.id}/edit`}
+                className="rounded-lg border border-line bg-card px-3 py-1.5 font-medium text-moss transition-colors hover:border-sage hover:text-ink"
+              >
+                Edit deal
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* KPI row */}
+        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {kpis.map((kpi) => (
+            <KpiCard
+              key={kpi.title}
+              icon={kpi.icon}
+              title={kpi.title}
+              value={kpi.value}
+              sub={kpi.sub}
+              grade={kpi.grade}
+              badge={kpi.badge}
+            />
+          ))}
+        </div>
+
+        {/* Summary boxes */}
+        <div className="mb-4">
+          <SummaryBoxes
+            input={deal.input}
+            analysis={a}
+            currency={cur}
+            onChange={patchInput}
+            isNew={isNew || blank}
+          />
+        </div>
+
+        {/* Wealth chart */}
+        <div className="mb-4">
+          <WealthChart wealth={a.wealth} currency={cur} />
+        </div>
+
+        {/* Decision analysis + recommendation */}
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <DecisionAnalysis
+              analysis={a}
+              currency={cur}
+              investmentReturnPct={deal.input.investmentReturnPct}
+            />
+          </div>
+          <div className="flex flex-col gap-4">
+            <RecommendationCard analysis={a} />
+            <StressTestCard analysis={a} currency={cur} />
+            <NotesCard notes={deal.notes} onNotesChange={patchNotes} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

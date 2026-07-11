@@ -1,65 +1,147 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+const FEATURES = [
+  {
+    title: "Deal Analysis",
+    text: "Full underwriting from purchase price to payback: acquisition costs, financing structure, mortgage schedule, yields and return on equity — recalculated live as you tune assumptions.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6" />
+      </svg>
+    ),
+  },
+  {
+    title: "Scenario Engine",
+    text: "Rent vs buy, buy & self-use, rent & invest. Compare accumulated costs, equity build-up and ROI for any year of the holding period, including a built-in stress test.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 4v6a4 4 0 0 0 4 4h6" />
+        <path d="m13 10 4 4-4 4M7 4 4 7m3-3 3 3" />
+      </svg>
+    ),
+  },
+  {
+    title: "Map & Pipeline",
+    text: "Keep every deal in one pipeline with photos, prices and addresses. Switch between the metrics view and a map of your property pins.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2ZM9 4v14M15 6v14" />
+      </svg>
+    ),
+  },
+  {
+    title: "Portfolio KPIs",
+    text: "Aggregate deals into portfolio-level KPIs: total value, monthly cashflow and average ROI across everything you own or track.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" />
+      </svg>
+    ),
+  },
+];
+
+const TAGS = ["CHF / EUR", "Swiss & German formats", "PDF export", "Local real estate assumptions"];
+
+export default function LandingPage() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-screen bg-cream text-ink">
+      {/* Nav */}
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+        <span className="font-serif text-2xl font-semibold tracking-wide">Galileor</span>
+        <nav className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-line-soft"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Sign in
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-lg bg-pine px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-pine-deep"
           >
-            Documentation
-          </a>
+            Sign up
+          </Link>
+        </nav>
+      </header>
+
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-6 pb-20 pt-16 text-center">
+        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.2em] text-moss">
+          Real estate underwriting for DACH investors
+        </p>
+        <h1 className="mx-auto max-w-3xl font-serif text-5xl font-semibold leading-[1.12] tracking-tight md:text-6xl">
+          Underwrite real estate deals before they eat your capital.
+        </h1>
+        <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-moss">
+          Galileor models the full financial picture of a property — acquisition, financing,
+          cashflow, wealth projection and scenarios — and returns a scored recommendation
+          before you sign anything.
+        </p>
+        <div className="mt-9 flex items-center justify-center gap-4">
+          <Link
+            href="/login"
+            className="rounded-lg bg-pine px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-pine-deep"
+          >
+            Start underwriting
+          </Link>
+          <Link
+            href="/deals/bellevue-42-zuerich"
+            className="rounded-lg border border-line bg-card px-6 py-3 text-sm font-medium transition-colors hover:border-sage"
+          >
+            View a sample deal
+          </Link>
         </div>
-      </main>
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-2.5">
+          {TAGS.map((t) => (
+            <span
+              key={t}
+              className="rounded-full border border-line bg-card px-3.5 py-1.5 text-xs font-medium text-moss"
+            >
+              {t}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((f) => (
+            <div
+              key={f.title}
+              className="rounded-xl border border-line bg-card p-6 transition-shadow hover:shadow-sm"
+            >
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-positive-soft text-pine">
+                {f.icon}
+              </div>
+              <h3 className="mb-2 text-[15px] font-semibold tracking-tight">{f.title}</h3>
+              <p className="text-[13px] leading-relaxed text-moss">{f.text}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Numbers strip */}
+      <section className="border-y border-line bg-card">
+        <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 text-center md:grid-cols-3">
+          {[
+            ["Month-by-month", "mortgage schedule, up to 50 years"],
+            ["0 – 100", "deal score with recommendation"],
+            ["3 scenarios", "rent vs buy, self-use, rent & invest"],
+          ].map(([big, small]) => (
+            <div key={big}>
+              <p className="font-serif text-3xl font-semibold">{big}</p>
+              <p className="mt-1 text-sm text-moss">{small}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="mx-auto flex max-w-6xl items-center justify-between px-6 py-10 text-sm text-moss">
+        <span className="font-serif text-lg font-semibold text-ink">Galileor</span>
+        <span>Built for small investors in Switzerland & Germany.</span>
+      </footer>
     </div>
   );
 }
