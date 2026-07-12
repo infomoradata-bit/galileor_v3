@@ -46,6 +46,17 @@ const ITEMS: Item[] = [
     ),
   },
   {
+    label: "Bank Financing",
+    href: "/bank-financing",
+    icon: (
+      <svg {...iconProps}>
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M3 10h18M7 15h4M7 18h6" />
+        <path d="M12 4v6" />
+      </svg>
+    ),
+  },
+  {
     label: "Map Search",
     href: "/map-search",
     soon: true,

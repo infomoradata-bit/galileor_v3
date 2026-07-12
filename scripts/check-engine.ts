@@ -1,9 +1,9 @@
 import { analyzeDeal } from "../lib/engine";
-import type { CalculationInput } from "../lib/types";
+import { normalizeInput } from "../lib/defaults";
 
 // Spec §21 example, structured so equity ≈ downpayment (no closing costs)
 // to compare against the hand-calculated numbers.
-const input: CalculationInput = {
+const input = normalizeInput({
   purchasePrice: 300_000,
   estimatedMarketValue: 300_000,
   areaSqm: 80,
@@ -33,7 +33,7 @@ const input: CalculationInput = {
   rentGrowthPct: 0,
   investmentReturnPct: 5,
   projectionYears: 30,
-};
+});
 
 const a = analyzeDeal(input);
 

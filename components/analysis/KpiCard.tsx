@@ -24,23 +24,23 @@ export function KpiCard({
   };
 
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-card p-4 shadow-[0_1px_2px_rgba(27,48,34,0.04)]">
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-line-soft text-moss">
+    <div className="flex flex-col rounded-xl border border-line bg-card p-3 shadow-[0_1px_2px_rgba(27,48,34,0.04)]">
+      <div className="mb-2 flex items-start justify-between">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-line-soft text-moss">
           {icon}
         </div>
         {grade && (
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-positive-soft text-xs font-bold text-positive">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-positive-soft text-[11px] font-bold text-positive">
             {grade}
           </span>
         )}
       </div>
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-sage">{title}</p>
-      <p className="mt-1 text-xl font-semibold tracking-tight text-ink">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-moss">{sub}</p>}
+      <p className="text-[9px] font-semibold uppercase tracking-wider text-sage">{title}</p>
+      <p className="mt-0.5 text-lg font-semibold tracking-tight text-ink">{value}</p>
+      {sub && <p className="mt-0.5 text-[10px] leading-tight text-moss">{sub}</p>}
       {badge && (
         <span
-          className={`mt-2 inline-flex w-fit rounded-full px-2 py-0.5 text-[10px] font-semibold ${badgeColors[badge.tone]}`}
+          className={`mt-1.5 inline-flex w-fit rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${badgeColors[badge.tone]}`}
         >
           {badge.text}
         </span>

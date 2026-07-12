@@ -16,7 +16,7 @@ function ScoreGauge({ score }: { score: number }) {
   const color = score >= 60 ? "#1f7a4d" : score >= 40 ? "#b07d2b" : "#b3402e";
 
   return (
-    <svg viewBox="0 0 132 80" className="mx-auto w-40">
+    <svg viewBox="0 0 132 80" className="mx-auto w-32">
       <path d="M 12 66 A 52 52 0 0 1 120 66" fill="none" stroke="#f0eee4" strokeWidth="9" strokeLinecap="round" />
       {score > 0 && (
         <path
@@ -43,14 +43,14 @@ export function RecommendationCard({ analysis }: { analysis: DealAnalysis }) {
     score.score >= 80 ? "80 – 100" : score.score >= 70 ? "70 – 85" : score.bandRange;
 
   return (
-    <Card className="p-5">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold tracking-tight">
+    <Card className="p-4">
+      <h2 className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold tracking-tight">
         Recommendation
         <InfoTip text="Weighted score: ROI 35%, cashflow 25%, payback 20%, return on equity 10%, stress resilience 10%." />
       </h2>
       <ScoreGauge score={score.score} />
       <p
-        className={`mt-1 text-center text-base font-semibold ${
+        className={`mt-0.5 text-center text-sm font-semibold ${
           score.score >= 60 ? "text-positive" : score.score >= 40 ? "text-amber" : "text-negative"
         }`}
       >
@@ -59,7 +59,7 @@ export function RecommendationCard({ analysis }: { analysis: DealAnalysis }) {
       <p className="text-center text-[11px] text-sage">
         {score.band} · Band {bandLabel}
       </p>
-      <div className="mt-4 space-y-2 border-t border-line-soft pt-3 text-[12px]">
+      <div className="mt-3 space-y-1.5 border-t border-line-soft pt-2.5 text-[11px]">
         <div className="flex items-center justify-between">
           <span className="text-moss">Upside potential</span>
           <span className={`font-semibold ${score.upsidePotentialPct > 0 ? "text-positive" : "text-ink"}`}>
@@ -89,14 +89,14 @@ export function StressTestCard({
   const baseRate = stress.assumptions.baseInterestRatePct;
 
   return (
-    <Card className="p-5">
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold tracking-tight">
+    <Card className="p-4">
+      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold tracking-tight">
         Stress Test
-        <span className="rounded-md bg-line-soft px-2 py-0.5 text-[10px] font-medium text-moss">
+        <span className="rounded-md bg-line-soft px-1.5 py-0.5 text-[9px] font-medium text-moss">
           Scenario
         </span>
       </h2>
-      <div className="space-y-2 text-[12px]">
+      <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between">
           <span className="text-moss">Interest rate</span>
           <span className="font-medium tabular-nums">
@@ -125,11 +125,11 @@ export function StressTestCard({
         </div>
       </div>
       <div
-        className={`mt-4 rounded-lg px-3 py-2.5 text-center ${
+        className={`mt-3 rounded-lg px-2.5 py-2 text-center ${
           stress.passed ? "bg-positive-soft" : "bg-negative-soft"
         }`}
       >
-        <p className={`text-sm font-bold tracking-wide ${stress.passed ? "text-positive" : "text-negative"}`}>
+        <p className={`text-[13px] font-bold tracking-wide ${stress.passed ? "text-positive" : "text-negative"}`}>
           {stress.passed ? "PASSED" : "FAILED"}
         </p>
         <p className="mt-0.5 text-[10px] leading-snug text-moss">
@@ -150,13 +150,13 @@ export function NotesCard({
   onNotesChange: (v: string) => void;
 }) {
   return (
-    <Card className="flex flex-1 flex-col p-5">
-      <h2 className="mb-2 text-sm font-semibold tracking-tight">Notes</h2>
+    <Card className="flex flex-1 flex-col p-4">
+      <h2 className="mb-1.5 text-sm font-semibold tracking-tight">Notes</h2>
       <textarea
         value={notes}
         onChange={(e) => onNotesChange(e.target.value)}
         placeholder="Add your notes about this deal…"
-        className="min-h-[120px] flex-1 resize-none rounded-lg border border-line bg-cream p-3 text-[12px] leading-relaxed outline-none placeholder:text-sage focus:border-pine"
+        className="min-h-[88px] flex-1 resize-none rounded-lg border border-line bg-cream p-2.5 text-[11px] leading-relaxed outline-none placeholder:text-sage focus:border-pine"
       />
     </Card>
   );

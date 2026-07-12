@@ -1,4 +1,5 @@
 import { analyzeDeal } from "../lib/engine";
+import { normalizeInput } from "../lib/defaults";
 import type { CalculationInput } from "../lib/types";
 
 function tryInputs(label: string, input: CalculationInput) {
@@ -31,7 +32,7 @@ function tryInputs(label: string, input: CalculationInput) {
   });
 }
 
-const base: CalculationInput = {
+const base = normalizeInput({
   purchasePrice: 1_240_000,
   estimatedMarketValue: 1_210_000,
   areaSqm: 78,
@@ -61,7 +62,7 @@ const base: CalculationInput = {
   rentGrowthPct: 1.2,
   investmentReturnPct: 5.0,
   projectionYears: 30,
-};
+});
 
 tryInputs("attempt1", base);
 

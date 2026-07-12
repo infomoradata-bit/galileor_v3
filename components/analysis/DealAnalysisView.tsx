@@ -47,12 +47,16 @@ export function DealAnalysisView({
   embedded = false,
   isNew = false,
   onPersist,
+  onDelete,
+  onDiscardDraft,
 }: {
   deal: Deal;
   embedded?: boolean;
   isNew?: boolean;
   /** Called when a new deal is first saved to the store. */
   onPersist?: (deal: Deal) => void;
+  onDelete?: (dealId: string) => void;
+  onDiscardDraft?: () => void;
 }) {
   const [deal, setDeal] = useState(dealProp);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -117,6 +121,16 @@ export function DealAnalysisView({
     }
   }
 
+  function handleDelete() {
+    const label = deal.name || deal.address || "this deal";
+    if (!window.confirm(`Delete "${label}"? This cannot be undone.`)) return;
+    if (isNew) {
+      onDiscardDraft?.();
+      return;
+    }
+    onDelete?.(deal.id);
+  }
+
   const dash = "—";
   const payback = blank ? null : labelForPayback(a.metrics.paybackYears);
   const rtr = blank ? null : labelForReturn(a.metrics.realTotalReturn10Y);
@@ -161,14 +175,14 @@ export function DealAnalysisView({
       <div
         className={
           embedded
-            ? "px-4 py-4 lg:px-6 lg:py-5"
-            : "mx-auto max-w-[1440px] px-5 py-5 lg:px-8 lg:py-6"
+            ? "px-3 py-3 lg:px-5 lg:py-4"
+            : "mx-auto max-w-[1440px] px-4 py-4 lg:px-6 lg:py-5"
         }
       >
         {!embedded && <AnalysisHeader onShare={share} shared={shared} />}
 
         {/* Property title */}
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {addressEditing ? (
               <div className="space-y-3">
@@ -252,7 +266,7 @@ export function DealAnalysisView({
                 <div className="flex items-center gap-2.5">
                   <h1
                     className={`font-semibold tracking-tight text-ink ${
-                      embedded ? "text-lg" : "text-[22px]"
+                      embedded ? "text-base" : "text-xl"
                     }`}
                   >
                     {deal.name || deal.address || "Muster Adresse"}
@@ -261,7 +275,7 @@ export function DealAnalysisView({
                   <Pill tone={isNew ? "amber" : "positive"}>{isNew ? "Draft" : "Active"}</Pill>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <p className="text-[13px] text-moss">
+                  <p className="text-[12px] text-moss">
                     {formatDealAddress(deal)}
                     {deal.yearBuilt ? ` · Built ${deal.yearBuilt}` : ""}
                     {deal.input.areaSqm ? ` · ${deal.input.areaSqm} m²` : ""}
@@ -301,11 +315,20 @@ export function DealAnalysisView({
                 </button>
               </>
             )}
+            {(onDelete || onDiscardDraft) && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="rounded-lg border border-negative/30 bg-card px-3 py-1.5 font-medium text-negative transition-colors hover:border-negative hover:bg-negative/5"
+              >
+                {isNew ? "Discard draft" : "Delete deal"}
+              </button>
+            )}
           </div>
         </div>
 
         {/* KPI row */}
-        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="mb-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
           {kpis.map((kpi) => (
             <KpiCard
               key={kpi.title}
@@ -320,7 +343,7 @@ export function DealAnalysisView({
         </div>
 
         {/* Summary boxes */}
-        <div className="mb-4">
+        <div className="mb-3">
           <SummaryBoxes
             input={deal.input}
             analysis={a}
@@ -331,9 +354,12 @@ export function DealAnalysisView({
         </div>
 
         {/* Wealth chart */}
-        <div className="mb-4">
+        <div className="mb-3">
           <WealthChart
             wealth={a.wealth}
+            mortgage={a.mortgage}
+            repayment={a.repayment}
+            rentInvest={a.rentInvest}
             currency={cur}
             selectedYear={clampedAnalysisYear}
             onYearSelect={setAnalysisYear}
@@ -341,7 +367,7 @@ export function DealAnalysisView({
         </div>
 
         {/* Decision analysis */}
-        <div className="mb-4">
+        <div className="mb-3">
           <DecisionAnalysis
             analysis={a}
             currency={cur}
@@ -352,7 +378,7 @@ export function DealAnalysisView({
         </div>
 
         {/* Recommendation, stress test, notes */}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           <RecommendationCard analysis={a} />
           <StressTestCard analysis={a} currency={cur} />
           <NotesCard notes={deal.notes} onNotesChange={patchNotes} />

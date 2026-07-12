@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CalculationInput, Currency } from "@/lib/types";
 import type { DealAnalysis } from "@/lib/types";
 import { fmtMoney, fmtPct, fmtNumber } from "@/lib/format";
+import { InfoTip } from "@/components/ui";
 import { NumField, Row, ShouldIsFooter, SummaryBox } from "./fields";
 
 export function SummaryBoxes({
@@ -32,8 +33,15 @@ export function SummaryBoxes({
     input.estimatedMarketValue * (1 + a.acquisition.closingCostsPctOfPrice / 100) +
     input.renovationBudget;
 
+  const r = a.repayment;
+  const ltvLabel = fmtNumber(r.firstMortgageLtvPct, cur, 2);
+
+  const mandatoryAmortisationTip = `Mandatory amortisation: reduce the mortgage to ${ltvLabel}% of lending value within ${r.mandatoryYears} years. Only the portion above this threshold must be repaid progressively.`;
+
+  const mortgageInterestTip = `1st and 2nd mortgage are banking classifications — not two separate loans. Interest is always calculated on the outstanding total mortgage. Your amortisation payment reduces the mandatory portion (above ${ltvLabel}% LTV); the total balance falls, so interest gradually decreases month by month.`;
+
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
       {/* 1 — Cost of Buying */}
       <SummaryBox
         index={1}
@@ -102,7 +110,7 @@ export function SummaryBoxes({
             fmtMoney(input.renovationBudget, cur)
           )}
         </Row>
-        <div className="my-1.5 h-px bg-line-soft" />
+        <div className="my-1 h-px bg-line-soft" />
         <Row label="Total investment" bold tip="Purchase price + closing costs + renovation.">
           {fmtMoney(a.acquisition.totalInvestment, cur)}
         </Row>
@@ -165,38 +173,111 @@ export function SummaryBoxes({
       </SummaryBox>
 
       {/* 3 — Repayment */}
-      <SummaryBox index={3} title="Repayment" editing={isEditing(3)} onToggleEdit={() => toggle(3)}>
-        <Row label="Loan term" tip="Total term of the mortgage.">
+      <SummaryBox
+        index={3}
+        title="Repayment"
+        editing={isEditing(3)}
+        onToggleEdit={() => toggle(3)}
+        footer={
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="text-sage">Mortgage financing / month</span>
+            <span className="font-semibold text-ink">
+              {showVal(r.totalFinancingMonthlyYear1, fmtMoney(r.totalFinancingMonthlyYear1, cur))}
+            </span>
+          </div>
+        }
+      >
+        <p className="mb-1.5 flex items-start gap-1 text-[10px] leading-snug text-sage">
+          <InfoTip text={mortgageInterestTip} />
+          <span>One loan — interest on the total outstanding balance; amortisation targets the mandatory portion first.</span>
+        </p>
+
+        <p className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-sage">
+          Mandatory mortgage (16.7%)
+          <InfoTip text={mandatoryAmortisationTip} />
+        </p>
+        <Row label="Total to be paid" tip="Portion above the two-thirds ceiling — must be amortised progressively.">
+          {showVal(r.mandatoryTotal, fmtMoney(r.mandatoryTotal, cur))}
+        </Row>
+        <Row label="Years to be paid" tip="Swiss standard is 15 years (or before retirement, whichever comes first).">
           {isEditing(3) ? (
-            <NumField blankWhenZero={isNew} value={input.loanTermYears} step={1} suffix="years" onChange={(v) => onChange({ loanTermYears: v })} />
+            <NumField
+              value={input.mandatoryAmortizationYears}
+              step={1}
+              suffix="years"
+              onChange={(v) => onChange({ mandatoryAmortizationYears: v })}
+            />
           ) : (
-            `${input.loanTermYears} years`
+            `${r.mandatoryYears} years`
           )}
         </Row>
-        <Row label="Mortgage system" tip="Annuity: fixed payment. Constant: fixed principal + interest.">
+        <Row
+          label="Monthly principal"
+          tip={`Amortisation payment on the mandatory portion only: ${fmtMoney(r.mandatoryTotal, cur)} ÷ ${r.mandatoryYears} years ÷ 12 months. This reduces the total mortgage balance.`}
+        >
+          {showVal(r.mandatoryPrincipalMonthly, fmtMoney(r.mandatoryPrincipalMonthly, cur))}
+        </Row>
+
+        <p className="mb-0.5 mt-1.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-sage">
+          Optional mortgage (83.3%)
+          <InfoTip text="The portion up to the ceiling. Interest-only while mandatory amortisation runs. Voluntary principal repayment starts after the mandatory period — a short period creates a steep equity rise on the chart." />
+        </p>
+        <Row label={`Ceiling (${ltvLabel}%)`} tip="Maximum balance treated as the optional (1st-mortgage) portion.">
+          {showVal(r.optionalCeiling, fmtMoney(r.optionalCeiling, cur))}
+        </Row>
+        <Row label="Total to be paid" tip="Mortgage balance up to the ceiling.">
+          {showVal(r.optionalTotal, fmtMoney(r.optionalTotal, cur))}
+        </Row>
+        <Row
+          label="Years to be paid"
+          tip="0 = interest only through the mandatory period. Years count starts after mandatory amortisation ends (e.g. year 16 if mandatory is 15 years)."
+        >
           {isEditing(3) ? (
-            <select
-              value={input.mortgageSystem}
-              onChange={(e) => onChange({ mortgageSystem: e.target.value as CalculationInput["mortgageSystem"] })}
-              className="rounded-md border border-line bg-cream px-2 py-1 text-[13px] outline-none focus:border-pine"
-            >
-              <option value="annuity">Annuity</option>
-              <option value="constant">Constant amortization</option>
-            </select>
-          ) : input.mortgageSystem === "annuity" ? (
-            "Annuity"
+            <NumField
+              blankWhenZero
+              value={input.optionalAmortizationYears}
+              step={1}
+              suffix="years"
+              onChange={(v) => onChange({ optionalAmortizationYears: v })}
+            />
+          ) : r.optionalYears > 0 ? (
+            `${r.optionalYears} years`
           ) : (
-            "Constant amort."
+            "—"
           )}
         </Row>
-        <div className="my-1.5 h-px bg-line-soft" />
-        <Row label="Monthly payment" bold tip="Principal and interest on the remaining balance each month.">
-          {fmtMoney(a.mortgage.initialMonthlyPayment, cur)}
+        <Row
+          label="Monthly principal"
+          tip={
+            r.optionalYears > 0 && r.optionalStartYear != null
+              ? `From year ${r.optionalStartYear}: ${fmtMoney(r.optionalTotal, cur)} ÷ ${r.optionalYears} years ÷ 12 months.`
+              : "No voluntary amortisation — optional portion stays outstanding (interest only)."
+          }
+        >
+          {showVal(
+            r.optionalPrincipalMonthly,
+            r.optionalYears > 0 && r.optionalStartYear != null
+              ? `${fmtMoney(r.optionalPrincipalMonthly, cur)} (from y${r.optionalStartYear})`
+              : fmtMoney(r.optionalPrincipalMonthly, cur)
+          )}
         </Row>
-        <Row label="Payoff in year" tip="Year in which the loan balance reaches zero.">
-          {a.mortgage.payoffYear ? String(new Date().getFullYear() + a.mortgage.payoffYear) : "> 50y"}
+
+        <div className="my-1 h-px bg-line-soft" />
+        <Row label="Total mortgage" tip="Outstanding balance at the start of year 1.">
+          {showVal(r.totalMortgage, fmtMoney(r.totalMortgage, cur))}
         </Row>
-        <Row label="Remaining balance (year 1)">{fmtMoney(a.mortgage.annual[0]?.balanceEnd ?? 0, cur)}</Row>
+        <Row
+          label="Monthly interest"
+          tip={`Interest on the full outstanding mortgage (year 1). Example: ${fmtMoney(r.totalMortgage, cur)} × rate ÷ 12. Decreases each month as the balance is repaid.`}
+        >
+          {fmtMoney(r.interestMonthlyYear1, cur)}
+        </Row>
+        <Row label="Monthly principal" tip="Year 1: mandatory amortisation only.">
+          {fmtMoney(r.principalMonthlyYear1, cur)}
+        </Row>
+        <Row label="Total payment / month" bold tip="Interest on total mortgage + principal repayment.">
+          {fmtMoney(r.totalFinancingMonthlyYear1, cur)}
+        </Row>
       </SummaryBox>
 
       {/* 4 — Cost of Owning */}
@@ -206,7 +287,7 @@ export function SummaryBoxes({
         editing={isEditing(4)}
         onToggleEdit={() => toggle(4)}
         footer={
-          <div className="flex items-center justify-between text-[12px]">
+          <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-ink">
               {fmtMoney(a.cashflow.owningCostMonthly * 12, cur)} / year
             </span>
@@ -214,11 +295,11 @@ export function SummaryBoxes({
           </div>
         }
       >
-        <Row label={`Maintenance (${fmtNumber(input.maintenancePctOfValue, cur, 1)}%)`} tip="Annual reserve as % of property value.">
+        <Row label="Maintenance" tip="Annual reserve as % of property value.">
           {isEditing(4) ? (
             <NumField blankWhenZero={isNew} value={input.maintenancePctOfValue} step={0.1} suffix="%" onChange={(v) => onChange({ maintenancePctOfValue: v })} />
           ) : (
-            fmtMoney(a.cashflow.maintenanceMonthly * 12, cur)
+            `${fmtNumber(input.maintenancePctOfValue, cur, 1)} %`
           )}
         </Row>
         <Row label="HOA / Nebenkosten" tip="Non-recoverable ancillary costs per month.">
@@ -256,7 +337,7 @@ export function SummaryBoxes({
 
       {/* 5 — Investment Assumptions */}
       <SummaryBox index={5} title="Investment Assumptions" editing={isEditing(5)} onToggleEdit={() => toggle(5)}>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-sage">Market</p>
+        <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Market</p>
         <Row label="Appreciation" tip="Expected annual property value growth.">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.appreciationPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ appreciationPct: v })} />
@@ -271,7 +352,7 @@ export function SummaryBoxes({
             `${fmtNumber(input.inflationPct, cur, 1)} % / year`
           )}
         </Row>
-        <p className="mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-sage">Performance</p>
+        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Performance</p>
         <Row label="Rent (net)" tip="Monthly net rent excluding utilities.">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.monthlyRent} step={50} onChange={(v) => onChange({ monthlyRent: v })} />
@@ -293,7 +374,7 @@ export function SummaryBoxes({
             fmtPct(input.vacancyPct)
           )}
         </Row>
-        <p className="mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-sage">Stock market</p>
+        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Stock market</p>
         <Row label="Estimated return per year" tip="Expected annual return if capital were invested in the stock market instead (used in Rent & Invest).">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.investmentReturnPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ investmentReturnPct: v })} />
@@ -301,7 +382,7 @@ export function SummaryBoxes({
             `${fmtNumber(input.investmentReturnPct, cur, 1)} % / year`
           )}
         </Row>
-        <div className="my-1.5 h-px bg-line-soft" />
+        <div className="my-1 h-px bg-line-soft" />
         <Row label="Gross yield">{fmtPct(a.metrics.grossYieldPct)}</Row>
         <Row label="Net yield" tone={a.metrics.netYieldPct >= 0 ? undefined : "negative"}>
           {fmtPct(a.metrics.netYieldPct)}

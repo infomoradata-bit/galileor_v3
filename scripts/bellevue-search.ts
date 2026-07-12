@@ -1,4 +1,5 @@
 import { analyzeDeal } from "../lib/engine";
+import { normalizeInput } from "../lib/defaults";
 import type { CalculationInput } from "../lib/types";
 
 function score(input: CalculationInput) {
@@ -39,7 +40,7 @@ for (const purchase of [1_210_000, 1_240_000]) {
     for (const equity of [263730, 290000, 318650]) {
       for (const maint of [0.1, 0.5, 1.0]) {
         for (const transfer of [1.5, 2.5, 3.5, 4.5]) {
-          const input: CalculationInput = {
+          const input = normalizeInput({
             purchasePrice: purchase,
             estimatedMarketValue: 1_210_000,
             areaSqm: 78,
@@ -69,7 +70,7 @@ for (const purchase of [1_210_000, 1_240_000]) {
             rentGrowthPct: 1.2,
             investmentReturnPct: 5.0,
             projectionYears: 30,
-          };
+          });
           const r = score(input);
           if (r.err < best.err) best = { err: r.err, input, a: r.a };
         }

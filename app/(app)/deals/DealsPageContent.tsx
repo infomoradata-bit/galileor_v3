@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useDeals } from "@/lib/store";
+import { useDeals, deleteDeal } from "@/lib/store";
 import { analyzeDeal } from "@/lib/engine";
 import { blankDeal, formatDealAddress } from "@/lib/defaults";
 import { fmtMoney, fmtPct } from "@/lib/format";
@@ -48,6 +48,19 @@ export default function DealsPageContent() {
   function handlePersist(deal: Deal) {
     setDraftDeal(null);
     setSelectedId(deal.id);
+  }
+
+  function handleDelete(dealId: string) {
+    const remaining = deals.filter((d) => d.id !== dealId);
+    deleteDeal(dealId);
+    if (selectedId === dealId || selectedId === DRAFT_DEAL_ID) {
+      setSelectedId(remaining[0]?.id ?? null);
+    }
+  }
+
+  function handleDiscardDraft() {
+    setDraftDeal(null);
+    setSelectedId(deals[0]?.id ?? null);
   }
 
   useEffect(() => {
@@ -145,6 +158,8 @@ export default function DealsPageContent() {
               embedded
               isNew={isDraft}
               onPersist={handlePersist}
+              onDelete={handleDelete}
+              onDiscardDraft={handleDiscardDraft}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-10">

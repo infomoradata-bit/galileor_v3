@@ -1,4 +1,5 @@
 import type { CalculationInput, Country, Deal } from "./types";
+import { SWISS_FIRST_MORTGAGE_LTV_PCT } from "./repayment";
 
 /** Sensible local defaults per market. */
 export function defaultInput(country: Country): CalculationInput {
@@ -24,6 +25,12 @@ export function defaultInput(country: Country): CalculationInput {
     ],
     loanTermYears: 25,
     interestOnlyYears: 0,
+
+    firstMortgageLtvPct: SWISS_FIRST_MORTGAGE_LTV_PCT,
+    mandatoryAmortizationYears: 15,
+    optionalAmortizationYears: 0,
+    mandatoryAmortizationMonthly: 0,
+    voluntaryFirstMortgagePrincipalMonthly: 0,
 
     monthlyRent: ch ? 3_000 : 1_400,
     additionalIncomeMonthly: 0,
@@ -62,6 +69,11 @@ export function blankInput(): CalculationInput {
     interestPhases: [{ years: 10, ratePct: 0 }],
     loanTermYears: 25,
     interestOnlyYears: 0,
+    firstMortgageLtvPct: SWISS_FIRST_MORTGAGE_LTV_PCT,
+    mandatoryAmortizationYears: 15,
+    optionalAmortizationYears: 0,
+    mandatoryAmortizationMonthly: 0,
+    voluntaryFirstMortgagePrincipalMonthly: 0,
     monthlyRent: 0,
     additionalIncomeMonthly: 0,
     vacancyPct: 0,
@@ -86,6 +98,21 @@ export const SAMPLE_ADDRESS = {
   zip: "8000",
   city: "Zürich",
 } as const;
+
+/** Backfill newer input fields on deals saved before a schema change. */
+export function normalizeInput(input: Partial<CalculationInput>): CalculationInput {
+  const base = blankInput();
+  return {
+    ...base,
+    ...input,
+    interestPhases: input.interestPhases?.length ? input.interestPhases : base.interestPhases,
+    firstMortgageLtvPct: input.firstMortgageLtvPct ?? SWISS_FIRST_MORTGAGE_LTV_PCT,
+    mandatoryAmortizationYears: input.mandatoryAmortizationYears ?? 15,
+    optionalAmortizationYears: input.optionalAmortizationYears ?? 0,
+    mandatoryAmortizationMonthly: input.mandatoryAmortizationMonthly ?? 0,
+    voluntaryFirstMortgagePrincipalMonthly: input.voluntaryFirstMortgagePrincipalMonthly ?? 0,
+  };
+}
 
 export function formatDealAddress(deal: Pick<Deal, "address" | "zip" | "city" | "country">): string {
   const parts = [deal.address, [deal.zip, deal.city].filter(Boolean).join(" "), deal.country].filter(Boolean);
@@ -157,7 +184,7 @@ export const SEED_DEALS: Deal[] = [
     photoHue: 145,
     createdAt: Date.now() - 86_400_000 * 12,
     updatedAt: Date.now() - 3_600_000,
-    input: {
+    input: normalizeInput({
       purchasePrice: 1_240_000,
       estimatedMarketValue: 1_210_000,
       areaSqm: 78,
@@ -190,7 +217,7 @@ export const SEED_DEALS: Deal[] = [
       rentGrowthPct: 1.2,
       investmentReturnPct: 5.0,
       projectionYears: 30,
-    },
+    }),
   },
   {
     id: "rheingasse-18-basel",
@@ -209,7 +236,7 @@ export const SEED_DEALS: Deal[] = [
     photoHue: 30,
     createdAt: Date.now() - 86_400_000 * 30,
     updatedAt: Date.now() - 86_400_000 * 2,
-    input: {
+    input: normalizeInput({
       purchasePrice: 620_000,
       estimatedMarketValue: 655_000,
       areaSqm: 58,
@@ -242,7 +269,7 @@ export const SEED_DEALS: Deal[] = [
       rentGrowthPct: 1.3,
       investmentReturnPct: 5.0,
       projectionYears: 30,
-    },
+    }),
   },
   {
     id: "leopoldstrasse-88-muenchen",
@@ -261,7 +288,7 @@ export const SEED_DEALS: Deal[] = [
     photoHue: 210,
     createdAt: Date.now() - 86_400_000 * 45,
     updatedAt: Date.now() - 86_400_000 * 5,
-    input: {
+    input: normalizeInput({
       purchasePrice: 890_000,
       estimatedMarketValue: 905_000,
       areaSqm: 210,
@@ -294,7 +321,7 @@ export const SEED_DEALS: Deal[] = [
       rentGrowthPct: 1.8,
       investmentReturnPct: 5.5,
       projectionYears: 30,
-    },
+    }),
   },
   {
     id: "schoeneggstrasse-12-zuerich",
@@ -313,7 +340,7 @@ export const SEED_DEALS: Deal[] = [
     photoHue: 275,
     createdAt: Date.now() - 86_400_000 * 8,
     updatedAt: Date.now() - 86_400_000,
-    input: {
+    input: normalizeInput({
       purchasePrice: 1_650_000,
       estimatedMarketValue: 1_600_000,
       areaSqm: 142,
@@ -346,6 +373,6 @@ export const SEED_DEALS: Deal[] = [
       rentGrowthPct: 1.1,
       investmentReturnPct: 5.0,
       projectionYears: 30,
-    },
+    }),
   },
 ];

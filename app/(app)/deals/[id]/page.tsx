@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { getDeal, useDeal } from "@/lib/store";
+import { getDeal, useDeal, deleteDeal } from "@/lib/store";
 import { DealAnalysisView } from "@/components/analysis/DealAnalysisView";
 
 export default function DealAnalysisPage() {
@@ -20,5 +20,13 @@ export default function DealAnalysisPage() {
     return <div className="p-10 text-sm text-moss">Loading deal…</div>;
   }
 
-  return <DealAnalysisView deal={deal} />;
+  return (
+    <DealAnalysisView
+      deal={deal}
+      onDelete={(id) => {
+        deleteDeal(id);
+        router.replace("/deals");
+      }}
+    />
+  );
 }

@@ -1,3 +1,7 @@
+import type { RepaymentStructure } from "./repayment";
+
+export type { RepaymentStructure } from "./repayment";
+
 export type Country = "CH" | "DE";
 export type Currency = "CHF" | "EUR";
 export type PropertyType = "Apartment" | "House" | "Multi-family" | "Commercial";
@@ -33,6 +37,17 @@ export interface CalculationInput {
   interestPhases: InterestPhase[];
   loanTermYears: number;
   interestOnlyYears: number;
+
+  /** Swiss 1st-mortgage ceiling as % of lending value (standard ≈ 66.67). */
+  firstMortgageLtvPct: number;
+  /** Years to amortise the portion above the ceiling (standard: 15). */
+  mandatoryAmortizationYears: number;
+  /** Years to voluntarily amortise the portion up to the ceiling; 0 = interest only. */
+  optionalAmortizationYears: number;
+  /** @deprecated Use optionalAmortizationYears — kept for saved deals. */
+  mandatoryAmortizationMonthly: number;
+  /** @deprecated Use optionalAmortizationYears — kept for saved deals. */
+  voluntaryFirstMortgagePrincipalMonthly: number;
 
   // Rent
   monthlyRent: number;
@@ -196,8 +211,12 @@ export interface BuySelfUseRow {
   cumOwningCost: number;
   totalInvested: number;
   propertyValue: number;
+  remainingLoanBalance: number;
   equity: number;
   investedAmount: number;
+  /** Cumulative monthly savings invested when buying costs less than renting. */
+  buyRentSavingsInvested: number;
+  buyRentSavingsReturn: number;
   roiPct: number;
   roiAnnualPct: number;
 }
@@ -259,4 +278,5 @@ export interface DealAnalysis {
   rentInvest: RentInvestRow[];
   shouldIs: ShouldIsRow[];
   score: ScoreResult;
+  repayment: RepaymentStructure;
 }
