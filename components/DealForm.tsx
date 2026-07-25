@@ -153,6 +153,7 @@ export function DealForm({ existing }: { existing?: Deal }) {
           <select className={inputCls} value={deal.country} onChange={(e) => setCountry(e.target.value as Country)}>
             <option value="CH">Switzerland (CHF)</option>
             <option value="DE">Germany (EUR)</option>
+            <option value="OTHER">Other (EUR)</option>
           </select>
         </Field>
         <Field label="Property type">

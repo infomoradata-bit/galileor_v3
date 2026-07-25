@@ -44,6 +44,7 @@ export function WealthChart({
   mortgage,
   repayment,
   rentInvest,
+  paybackYears,
   currency,
   selectedYear,
   onYearSelect,
@@ -52,26 +53,40 @@ export function WealthChart({
   mortgage: MortgageResult;
   repayment: RepaymentStructure;
   rentInvest: RentInvestRow[];
+  /** Chart horizon follows the deal payback period (dynamic). */
+  paybackYears: number | null;
   currency: Currency;
   selectedYear: number;
   onYearSelect: (year: number) => void;
 }) {
   const startYear = wealth[0]?.calendarYear ?? new Date().getFullYear();
+  const wealthHorizon = wealth[wealth.length - 1]?.year ?? 30;
   const loanEndYear =
     mortgage.payoffYear ??
     mortgage.annual.findLast((r) => r.interest + r.principal > 0.5)?.year ??
     0;
-  const maxYear =
-    loanEndYear > 0 ? loanEndYear : (wealth[wealth.length - 1]?.year ?? 30);
-  const ranges = useMemo(() => {
-    const options = [10, 20, 30, 40, 50].filter((r) => r <= maxYear);
-    if (maxYear > 0 && !options.includes(maxYear)) options.push(maxYear);
-    return options.sort((a, b) => a - b);
-  }, [maxYear]);
-  const [range, setRange] = useState(maxYear);
+  const scheduleHorizon =
+    (repayment.mandatoryEndYear ?? 0) +
+    (repayment.optionalYears > 0 ? repayment.optionalYears : 0);
+  /** Dynamic: prefer payback period; fall back to loan/schedule end, never force 50y. */
+  const maxYear = Math.max(
+    1,
+    Math.min(
+      wealthHorizon,
+      Math.ceil(
+        paybackYears && paybackYears > 0
+          ? paybackYears
+          : loanEndYear > 0
+            ? loanEndYear
+            : scheduleHorizon > 0
+              ? scheduleHorizon
+              : wealthHorizon
+      )
+    )
+  );
   const [hoverYear, setHoverYear] = useState<number | null>(null);
   const [hiddenSeries, setHiddenSeries] = useState<Set<SeriesKey>>(() => new Set());
-  const effectiveRange = Math.min(range, maxYear);
+  const effectiveRange = maxYear;
 
   const toggleSeries = (key: SeriesKey) => {
     setHiddenSeries((prev) => {
@@ -109,6 +124,20 @@ export function WealthChart({
   const selected = wealth.find((row) => row.year === selectedYear) ?? null;
   const selectedCalendarYear = selected?.calendarYear ?? null;
 
+  const accumulated = useMemo(() => {
+    const throughYear = Math.max(selectedYear, 0);
+    let rent = 0;
+    let buying = 0;
+    let principal = 0;
+    for (const row of wealth) {
+      if (row.year < 1 || row.year > throughYear) continue;
+      rent += row.monthlyRent * 12;
+      buying += (row.monthlyOwningCost + row.monthlyInterest + row.monthlyPrincipal) * 12;
+      principal += row.monthlyPrincipal * 12;
+    }
+    return { rent, buying, principal };
+  }, [wealth, selectedYear]);
+
   const handleChartInteraction = (state: ChartClickState | null) => {
     if (state?.activeLabel != null) {
       setHoverYear(Number(state.activeLabel));
@@ -128,10 +157,39 @@ export function WealthChart({
 
   const detailItems = selected
     ? [
-        { label: "Monthly rent", value: fmtMoney(selected.monthlyRent, currency) },
-        { label: "Monthly cost of owning", value: fmtMoney(selected.monthlyOwningCost, currency) },
-        { label: "Monthly payment of interest", value: fmtMoney(selected.monthlyInterest, currency) },
-        { label: "Monthly payment of principal", value: fmtMoney(selected.monthlyPrincipal, currency) },
+        {
+          label: "Monthly rent",
+          tip: "Comparable rent for this property in the selected year, grown with your rent-increase assumption. What you would pay if you rented instead of buying.",
+          value: fmtMoney(selected.monthlyRent, currency),
+        },
+        {
+          label: "Monthly buying",
+          tip: "Total monthly cost of owning in the selected year: owning costs (maintenance, HOA, tax) + mortgage interest + principal repayment.",
+          value: fmtMoney(
+            selected.monthlyOwningCost + selected.monthlyInterest + selected.monthlyPrincipal,
+            currency
+          ),
+        },
+        {
+          label: "Monthly principal (added Equity)",
+          tip: "Mortgage principal repaid in the selected year (monthly average). This amount reduces debt and increases your equity in the property.",
+          value: fmtMoney(selected.monthlyPrincipal, currency),
+        },
+        {
+          label: "Accumulated rent",
+          tip: "Sum of all rent you would have paid from year 1 through the selected year (with rent growth applied each year).",
+          value: fmtMoney(accumulated.rent, currency),
+        },
+        {
+          label: "Accumulated buying",
+          tip: "Sum of all buying costs through the selected year: owning costs + interest + principal paid so far.",
+          value: fmtMoney(accumulated.buying, currency),
+        },
+        {
+          label: "Accumulated principal (added Equity)",
+          tip: "Total principal repaid from year 1 through the selected year — the equity you have built by paying down the mortgage.",
+          value: fmtMoney(accumulated.principal, currency),
+        },
       ]
     : [];
 
@@ -140,7 +198,7 @@ export function WealthChart({
       <div className="mb-3 grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight md:justify-self-start">
           Wealth Development
-          <InfoTip text="Compare wealth outcomes: Buy & Invest (property equity) vs Rent & Invest (invested downpayment and savings). Debt follows the Repayment box schedule. The amber line marks when mandatory amortisation ends." />
+          <InfoTip text="Chart horizon follows the deal payback period (dynamic). Compare Buy & Invest vs Rent & Invest. The amber line marks when mandatory amortisation ends." />
         </h2>
         <div className="flex flex-wrap items-center justify-center gap-1 text-[11px] md:justify-self-center">
           {SERIES.map((series) => {
@@ -168,19 +226,10 @@ export function WealthChart({
             );
           })}
         </div>
-        <select
-          value={effectiveRange}
-          onChange={(e) => {
-            setRange(Number(e.target.value));
-          }}
-          className="rounded-lg border border-line bg-cream px-2 py-1 text-[11px] font-medium outline-none focus:border-pine md:justify-self-end"
-        >
-          {ranges.map((r) => (
-            <option key={r} value={r}>
-              Year 1 – {r}
-            </option>
-          ))}
-        </select>
+        <span className="rounded-lg border border-line bg-cream px-2 py-1 text-[11px] font-medium text-moss md:justify-self-end">
+          Year 1 – {effectiveRange}
+          {paybackYears && paybackYears > 0 ? " (payback)" : ""}
+        </span>
       </div>
       <div className="h-[380px] min-h-[380px] cursor-pointer">
         <ResponsiveContainer width="100%" height="100%">
@@ -240,9 +289,16 @@ export function WealthChart({
             {selectedCalendarYear != null && selectedYear <= effectiveRange && (
               <ReferenceLine
                 x={selectedCalendarYear}
-                stroke="#8a9a8e"
+                stroke="#d92c20"
                 strokeDasharray="4 4"
-                strokeWidth={1}
+                strokeWidth={2}
+                label={{
+                  value: `Selected ${selectedCalendarYear}`,
+                  position: "insideTopLeft",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fill: "#d92c20",
+                }}
               />
             )}
             {SERIES.map((s) => (
@@ -264,13 +320,16 @@ export function WealthChart({
       <div className="mt-3 border-t border-line-soft pt-3">
         {selected ? (
           <>
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-sage">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[#d92c20]">
               Selected year {selected.calendarYear}
             </p>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
               {detailItems.map((item) => (
                 <div key={item.label} className="rounded-lg border border-line-soft bg-cream/60 px-2.5 py-2">
-                  <p className="text-[10px] text-sage">{item.label}</p>
+                  <p className="flex items-center gap-1 text-[10px] text-sage">
+                    {item.label}
+                    <InfoTip text={item.tip} />
+                  </p>
                   <p className="mt-0.5 text-[13px] font-semibold text-ink">{item.value}</p>
                 </div>
               ))}

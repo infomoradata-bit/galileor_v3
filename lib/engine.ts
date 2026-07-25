@@ -1,11 +1,17 @@
 import { blankInput } from "./defaults";
-import { computeRepaymentStructure, computeSwissMortgageSchedule, lendingValueFor } from "./repayment";
+import {
+  computeMortgageSchedule,
+  computeRepaymentStructure,
+  lendingValueFor,
+  repaymentModeFor,
+} from "./repayment";
 import type {
   AcquisitionResult,
   AnnualDebtRow,
   BuySelfUseRow,
   CalculationInput,
   CashflowResult,
+  Country,
   DealAnalysis,
   MetricsResult,
   MortgageResult,
@@ -84,13 +90,19 @@ function monthlyRateForMonth(input: CalculationInput, monthIndex: number): numbe
   return (input.interestPhases[0]?.ratePct ?? 0) / 100 / 12;
 }
 
-export function computeMortgage(input: CalculationInput, loanAmount: number): MortgageResult {
+export function computeMortgage(
+  input: CalculationInput,
+  loanAmount: number,
+  country: Country = "CH"
+): MortgageResult {
   const lendingValue = lendingValueFor(input);
-  const { annual, payoffYear } = computeSwissMortgageSchedule(
+  const mode = repaymentModeFor(country);
+  const { annual, payoffYear } = computeMortgageSchedule(
     input,
     lendingValue,
     loanAmount,
     (m) => monthlyRateForMonth(input, m),
+    mode,
     MAX_YEARS
   );
 
@@ -162,7 +174,7 @@ export function computeCashflow(input: CalculationInput, mortgage: MortgageResul
 // ---------------------------------------------------------------------------
 // 4. Stress test: interest +1.4pp (→ ~4.5%), rent -10%, vacancy 8%
 // ---------------------------------------------------------------------------
-export function computeStress(input: CalculationInput): StressResult {
+export function computeStress(input: CalculationInput, country: Country = "CH"): StressResult {
   const baseRate = input.interestPhases[0]?.ratePct ?? 3.5;
   const stressedRate = baseRate + 1.4;
   const stressed: CalculationInput = {
@@ -174,7 +186,7 @@ export function computeStress(input: CalculationInput): StressResult {
     vacancyPct: 8,
   };
   const acq = computeAcquisition(stressed);
-  const mort = computeMortgage(stressed, acq.mortgage);
+  const mort = computeMortgage(stressed, acq.mortgage, country);
   const cf = computeCashflow(stressed, mort);
 
   // Count months in year 1 where net cashflow stays positive under stress
@@ -747,12 +759,13 @@ function emptyAnalysis(): DealAnalysis {
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
-export function analyzeDeal(input: CalculationInput): DealAnalysis {
+export function analyzeDeal(input: CalculationInput, country: Country = "CH"): DealAnalysis {
   if (isBlankDeal(input)) return emptyAnalysis();
+  const mode = repaymentModeFor(country);
   const acquisition = computeAcquisition(input);
-  const mortgage = computeMortgage(input, acquisition.mortgage);
+  const mortgage = computeMortgage(input, acquisition.mortgage, country);
   const cashflow = computeCashflow(input, mortgage);
-  const stress = computeStress(input);
+  const stress = computeStress(input, country);
   const metrics = computeMetrics(input, acquisition, mortgage, cashflow);
   const wealth = computeWealth(input, acquisition, mortgage);
   const rentVsBuy = computeRentVsBuy(input, mortgage);
@@ -765,7 +778,8 @@ export function analyzeDeal(input: CalculationInput): DealAnalysis {
     input,
     lendingValue,
     acquisition.mortgage,
-    cashflow.interestMonthlyYear1
+    cashflow.interestMonthlyYear1,
+    mode
   );
 
   return {

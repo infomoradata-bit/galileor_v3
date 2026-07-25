@@ -69,7 +69,7 @@ export function DealAnalysisView({
   }, [dealProp.id]);
 
   const blank = isBlankDeal(deal.input);
-  const analysis = useMemo(() => analyzeDeal(deal.input), [deal.input]);
+  const analysis = useMemo(() => analyzeDeal(deal.input, deal.country), [deal.input, deal.country]);
   const cur = deal.currency;
   const a = analysis;
   const maxAnalysisYear = a.rentVsBuy.length;
@@ -207,19 +207,19 @@ export function DealAnalysisView({
                     className={`${inputCls} min-w-[140px] flex-1`}
                     placeholder="Address"
                     value={deal.address}
-                    onChange={(e) => patchDeal({ address: e.target.value })}
+                    onChange={(e) => patchDeal({ address: e.target.value, lat: undefined, lng: undefined })}
                   />
                   <input
                     className={`${inputCls} w-20`}
                     placeholder="ZIP"
                     value={deal.zip}
-                    onChange={(e) => patchDeal({ zip: e.target.value })}
+                    onChange={(e) => patchDeal({ zip: e.target.value, lat: undefined, lng: undefined })}
                   />
                   <input
                     className={`${inputCls} min-w-[120px] flex-1`}
                     placeholder="City"
                     value={deal.city}
-                    onChange={(e) => patchDeal({ city: e.target.value })}
+                    onChange={(e) => patchDeal({ city: e.target.value, lat: undefined, lng: undefined })}
                   />
                   <select
                     className={inputCls}
@@ -229,11 +229,14 @@ export function DealAnalysisView({
                       patchDeal({
                         country,
                         currency: country === "CH" ? "CHF" : "EUR",
+                        lat: undefined,
+                        lng: undefined,
                       });
                     }}
                   >
                     <option value="CH">CH</option>
                     <option value="DE">DE</option>
+                    <option value="OTHER">Other</option>
                   </select>
                 </div>
                 <div className="flex flex-wrap gap-2 text-[13px]">
@@ -360,6 +363,7 @@ export function DealAnalysisView({
             mortgage={a.mortgage}
             repayment={a.repayment}
             rentInvest={a.rentInvest}
+            paybackYears={a.metrics.paybackYears}
             currency={cur}
             selectedYear={clampedAnalysisYear}
             onYearSelect={setAnalysisYear}

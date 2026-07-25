@@ -34,11 +34,24 @@ export function SummaryBoxes({
     input.renovationBudget;
 
   const r = a.repayment;
+  const isSwiss = r.mode === "swiss";
   const ltvLabel = fmtNumber(r.firstMortgageLtvPct, cur, 2);
 
   const mandatoryAmortisationTip = `Mandatory amortisation: reduce the mortgage to ${ltvLabel}% of lending value within ${r.mandatoryYears} years. Only the portion above this threshold must be repaid progressively.`;
 
-  const mortgageInterestTip = `1st and 2nd mortgage are banking classifications — not two separate loans. Interest is always calculated on the outstanding total mortgage. Your amortisation payment reduces the mandatory portion (above ${ltvLabel}% LTV); the total balance falls, so interest gradually decreases month by month.`;
+  const isAnnuity = r.mortgageSystem === "annuity";
+  const systemLabel = isAnnuity ? "Annuity" : "Constant amortisation";
+  const systemTip = isAnnuity
+    ? "Annuity: the total monthly payment stays level. Interest falls as the balance drops, so the principal share grows month by month."
+    : "Constant amortisation: the monthly principal stays level. Interest falls as the balance drops, so the total payment decreases month by month.";
+  const principalLabel = isAnnuity ? "Monthly principal (start)" : "Monthly principal";
+
+  const mortgageInterestTip = isSwiss
+    ? `1st and 2nd mortgage are banking classifications — not two separate loans. Interest is always calculated on the outstanding total mortgage. Your amortisation payment reduces the mandatory portion (above ${ltvLabel}% LTV); the total balance falls, so interest gradually decreases month by month.`
+    : "One mortgage over the full payback period. Interest is calculated on the outstanding balance; principal runs for the whole loan term (annuity or constant amortisation).";
+
+  const singleMortgageTip =
+    "Outside Switzerland there is no mandatory 1st/2nd split. The full mortgage is amortised over the payback period you set here.";
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
@@ -139,6 +152,22 @@ export function SummaryBoxes({
             fmtMoney(input.equity, cur)
           )}
         </Row>
+        <Row label="Mortgage system" tip={systemTip}>
+          {isEditing(2) ? (
+            <select
+              value={input.mortgageSystem}
+              onChange={(e) =>
+                onChange({ mortgageSystem: e.target.value as CalculationInput["mortgageSystem"] })
+              }
+              className="rounded-md border border-line bg-cream px-1.5 py-0.5 text-right text-[12px] font-medium outline-none focus:border-pine"
+            >
+              <option value="annuity">Annuity</option>
+              <option value="constant">Constant amortisation</option>
+            </select>
+          ) : (
+            systemLabel
+          )}
+        </Row>
         <Row
           label={`Down payment (${fmtNumber((a.acquisition.downpayment / Math.max(input.purchasePrice, 1)) * 100, cur, 0)}%)`}
           tip="Equity minus closing costs — what actually reduces the mortgage."
@@ -189,95 +218,127 @@ export function SummaryBoxes({
       >
         <p className="mb-1.5 flex items-start gap-1 text-[10px] leading-snug text-sage">
           <InfoTip text={mortgageInterestTip} />
-          <span>One loan — interest on the total outstanding balance; amortisation targets the mandatory portion first.</span>
+          <span>
+            {isSwiss
+              ? "One loan — interest on the total outstanding balance; amortisation targets the mandatory portion first."
+              : "One mortgage over the full payback period — no 1st/2nd split."}
+          </span>
         </p>
 
-        <p className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-sage">
-          Mandatory mortgage (16.7%)
-          <InfoTip text={mandatoryAmortisationTip} />
-        </p>
-        <Row label="Total to be paid" tip="Portion above the two-thirds ceiling — must be amortised progressively.">
-          {showVal(r.mandatoryTotal, fmtMoney(r.mandatoryTotal, cur))}
-        </Row>
-        <Row label="Years to be paid" tip="Swiss standard is 15 years (or before retirement, whichever comes first).">
-          {isEditing(3) ? (
-            <NumField
-              value={input.mandatoryAmortizationYears}
-              step={1}
-              suffix="years"
-              onChange={(v) => onChange({ mandatoryAmortizationYears: v })}
-            />
-          ) : (
-            `${r.mandatoryYears} years`
-          )}
-        </Row>
-        <Row
-          label="Monthly principal"
-          tip={`Amortisation payment on the mandatory portion only: ${fmtMoney(r.mandatoryTotal, cur)} ÷ ${r.mandatoryYears} years ÷ 12 months. This reduces the total mortgage balance.`}
-        >
-          {showVal(r.mandatoryPrincipalMonthly, fmtMoney(r.mandatoryPrincipalMonthly, cur))}
-        </Row>
+        {isSwiss ? (
+          <>
+            <p className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-ink">
+              Mandatory mortgage (16.7%)
+              <InfoTip text={mandatoryAmortisationTip} />
+            </p>
+            <Row label="Total to be paid" tip="Portion above the two-thirds ceiling — must be amortised progressively.">
+              {showVal(r.mandatoryTotal, fmtMoney(r.mandatoryTotal, cur))}
+            </Row>
+            <Row label="Years to be paid" tip="Swiss standard is 15 years (or before retirement, whichever comes first).">
+              {isEditing(3) ? (
+                <NumField
+                  value={input.mandatoryAmortizationYears}
+                  step={1}
+                  suffix="years"
+                  onChange={(v) => onChange({ mandatoryAmortizationYears: v })}
+                />
+              ) : (
+                `${r.mandatoryYears} years`
+              )}
+            </Row>
+            <Row
+              label={principalLabel}
+              tip={
+                isAnnuity
+                  ? `Annuity: the payment on the mandatory portion stays level, so principal starts at this amount and grows each month as interest falls. ${fmtMoney(r.mandatoryTotal, cur)} is still cleared in ${r.mandatoryYears} years.`
+                  : `Amortisation payment on the mandatory portion only: ${fmtMoney(r.mandatoryTotal, cur)} ÷ ${r.mandatoryYears} years ÷ 12 months. This reduces the total mortgage balance.`
+              }
+            >
+              {showVal(r.mandatoryPrincipalMonthly, fmtMoney(r.mandatoryPrincipalMonthly, cur))}
+            </Row>
 
-        <p className="mb-0.5 mt-1.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-sage">
-          Optional mortgage (83.3%)
-          <InfoTip text="The portion up to the ceiling. Interest-only while mandatory amortisation runs. Voluntary principal repayment starts after the mandatory period — a short period creates a steep equity rise on the chart." />
-        </p>
-        <Row label={`Ceiling (${ltvLabel}%)`} tip="Maximum balance treated as the optional (1st-mortgage) portion.">
-          {showVal(r.optionalCeiling, fmtMoney(r.optionalCeiling, cur))}
-        </Row>
-        <Row label="Total to be paid" tip="Mortgage balance up to the ceiling.">
-          {showVal(r.optionalTotal, fmtMoney(r.optionalTotal, cur))}
-        </Row>
-        <Row
-          label="Years to be paid"
-          tip="0 = interest only through the mandatory period. Years count starts after mandatory amortisation ends (e.g. year 16 if mandatory is 15 years)."
-        >
-          {isEditing(3) ? (
-            <NumField
-              blankWhenZero
-              value={input.optionalAmortizationYears}
-              step={1}
-              suffix="years"
-              onChange={(v) => onChange({ optionalAmortizationYears: v })}
-            />
-          ) : r.optionalYears > 0 ? (
-            `${r.optionalYears} years`
-          ) : (
-            "—"
-          )}
-        </Row>
-        <Row
-          label="Monthly principal"
-          tip={
-            r.optionalYears > 0 && r.optionalStartYear != null
-              ? `From year ${r.optionalStartYear}: ${fmtMoney(r.optionalTotal, cur)} ÷ ${r.optionalYears} years ÷ 12 months.`
-              : "No voluntary amortisation — optional portion stays outstanding (interest only)."
-          }
-        >
-          {showVal(
-            r.optionalPrincipalMonthly,
-            r.optionalYears > 0 && r.optionalStartYear != null
-              ? `${fmtMoney(r.optionalPrincipalMonthly, cur)} (from y${r.optionalStartYear})`
-              : fmtMoney(r.optionalPrincipalMonthly, cur)
-          )}
-        </Row>
-
-        <div className="my-1 h-px bg-line-soft" />
-        <Row label="Total mortgage" tip="Outstanding balance at the start of year 1.">
-          {showVal(r.totalMortgage, fmtMoney(r.totalMortgage, cur))}
-        </Row>
-        <Row
-          label="Monthly interest"
-          tip={`Interest on the full outstanding mortgage (year 1). Example: ${fmtMoney(r.totalMortgage, cur)} × rate ÷ 12. Decreases each month as the balance is repaid.`}
-        >
-          {fmtMoney(r.interestMonthlyYear1, cur)}
-        </Row>
-        <Row label="Monthly principal" tip="Year 1: mandatory amortisation only.">
-          {fmtMoney(r.principalMonthlyYear1, cur)}
-        </Row>
-        <Row label="Total payment / month" bold tip="Interest on total mortgage + principal repayment.">
-          {fmtMoney(r.totalFinancingMonthlyYear1, cur)}
-        </Row>
+            <p className="mb-0.5 mt-1.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-ink">
+              Optional mortgage (83.3%)
+              <InfoTip text="The portion up to the ceiling. Interest-only while mandatory amortisation runs. Voluntary principal repayment starts after the mandatory period — a short period creates a steep equity rise on the chart." />
+            </p>
+            <Row label="Total to be paid" tip={`Mortgage balance up to the ${ltvLabel}% ceiling.`}>
+              {showVal(r.optionalTotal, fmtMoney(r.optionalTotal, cur))}
+            </Row>
+            <Row
+              label="Years to be paid"
+              tip="0 = interest only through the mandatory period. Years count starts after mandatory amortisation ends (e.g. year 16 if mandatory is 15 years)."
+            >
+              {isEditing(3) ? (
+                <NumField
+                  blankWhenZero
+                  value={input.optionalAmortizationYears}
+                  step={1}
+                  suffix="years"
+                  onChange={(v) => onChange({ optionalAmortizationYears: v })}
+                />
+              ) : r.optionalYears > 0 ? (
+                `${r.optionalYears} years`
+              ) : (
+                "—"
+              )}
+            </Row>
+            <Row
+              label={principalLabel}
+              tip={
+                r.optionalYears > 0 && r.optionalStartYear != null
+                  ? isAnnuity
+                    ? `From year ${r.optionalStartYear} the optional portion switches to a level annuity payment over ${r.optionalYears} years — principal starts here and grows as interest falls.`
+                    : `From year ${r.optionalStartYear}: ${fmtMoney(r.optionalTotal, cur)} ÷ ${r.optionalYears} years ÷ 12 months.`
+                  : "No voluntary amortisation — optional portion stays outstanding (interest only)."
+              }
+            >
+              {showVal(
+                r.optionalPrincipalMonthly,
+                r.optionalYears > 0 && r.optionalStartYear != null
+                  ? `${fmtMoney(r.optionalPrincipalMonthly, cur)} (from y${r.optionalStartYear})`
+                  : fmtMoney(r.optionalPrincipalMonthly, cur)
+              )}
+            </Row>
+          </>
+        ) : (
+          <>
+            <p className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-ink">
+              Mortgage
+              <InfoTip text={singleMortgageTip} />
+            </p>
+            <Row label="Total to be paid" tip="Full outstanding mortgage — amortised as one loan.">
+              {showVal(r.totalMortgage, fmtMoney(r.totalMortgage, cur))}
+            </Row>
+            <Row
+              label="Payback period"
+              tip="Full amortisation term for the mortgage. This is also the loan term used in the schedule."
+            >
+              {isEditing(3) ? (
+                <NumField
+                  value={input.loanTermYears}
+                  step={1}
+                  suffix="years"
+                  onChange={(v) => onChange({ loanTermYears: Math.max(1, Math.round(v)) })}
+                />
+              ) : (
+                `${r.mandatoryYears} years`
+              )}
+            </Row>
+            <Row
+              label={principalLabel}
+              tip={
+                isAnnuity
+                  ? `Annuity: level payment over ${r.mandatoryYears} years. Principal starts here and grows as interest falls.`
+                  : `Constant amortisation: ${fmtMoney(r.totalMortgage, cur)} ÷ ${r.mandatoryYears} years ÷ 12 months.`
+              }
+            >
+              {showVal(r.principalMonthlyYear1, fmtMoney(r.principalMonthlyYear1, cur))}
+            </Row>
+            <Row label="Monthly interest (start)" tip="Interest on the full outstanding mortgage in month 1.">
+              {showVal(r.interestMonthlyYear1, fmtMoney(r.interestMonthlyYear1, cur))}
+            </Row>
+          </>
+        )}
       </SummaryBox>
 
       {/* 4 — Cost of Owning */}
@@ -316,35 +377,11 @@ export function SummaryBoxes({
             fmtMoney(input.propertyTaxAnnual, cur)
           )}
         </Row>
-        <Row
-          label={`Management (${fmtNumber(input.monthlyRent > 0 ? ((input.managementMonthly * 12) / (input.monthlyRent * 12)) * 100 : 0, cur, 0)}%)`}
-          tip="Property management fee per year."
-        >
-          {isEditing(4) ? (
-            <NumField blankWhenZero={isNew} value={input.managementMonthly} step={10} onChange={(v) => onChange({ managementMonthly: v })} />
-          ) : (
-            fmtMoney(input.managementMonthly * 12, cur)
-          )}
-        </Row>
-        <Row label="Renovation reserve" tip="Annual reserve for future renovations.">
-          {isEditing(4) ? (
-            <NumField blankWhenZero={isNew} value={input.renovationReserveMonthly} step={10} onChange={(v) => onChange({ renovationReserveMonthly: v })} />
-          ) : (
-            fmtMoney(input.renovationReserveMonthly * 12, cur)
-          )}
-        </Row>
       </SummaryBox>
 
       {/* 5 — Investment Assumptions */}
       <SummaryBox index={5} title="Investment Assumptions" editing={isEditing(5)} onToggleEdit={() => toggle(5)}>
-        <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Market</p>
-        <Row label="Appreciation" tip="Expected annual property value growth.">
-          {isEditing(5) ? (
-            <NumField blankWhenZero={isNew} value={input.appreciationPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ appreciationPct: v })} />
-          ) : (
-            `${fmtNumber(input.appreciationPct, cur, 1)} % / year`
-          )}
-        </Row>
+        <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-wider text-ink">Market</p>
         <Row label="Inflation" tip="Used for cost growth and real return.">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.inflationPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ inflationPct: v })} />
@@ -352,7 +389,14 @@ export function SummaryBoxes({
             `${fmtNumber(input.inflationPct, cur, 1)} % / year`
           )}
         </Row>
-        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Performance</p>
+        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-ink">Real estate market</p>
+        <Row label="Appreciation" tip="Expected annual property value growth.">
+          {isEditing(5) ? (
+            <NumField blankWhenZero={isNew} value={input.appreciationPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ appreciationPct: v })} />
+          ) : (
+            `${fmtNumber(input.appreciationPct, cur, 1)} % / year`
+          )}
+        </Row>
         <Row label="Rent (net)" tip="Monthly net rent excluding utilities.">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.monthlyRent} step={50} onChange={(v) => onChange({ monthlyRent: v })} />
@@ -374,7 +418,7 @@ export function SummaryBoxes({
             fmtPct(input.vacancyPct)
           )}
         </Row>
-        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-sage">Stock market</p>
+        <p className="mb-0.5 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-ink">Stock market</p>
         <Row label="Estimated return per year" tip="Expected annual return if capital were invested in the stock market instead (used in Rent & Invest).">
           {isEditing(5) ? (
             <NumField blankWhenZero={isNew} value={input.investmentReturnPct} step={0.1} suffix="%/yr" onChange={(v) => onChange({ investmentReturnPct: v })} />

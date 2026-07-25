@@ -229,7 +229,7 @@ export function DecisionAnalysis({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-4 pt-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
           Real Estate Decision Analysis
-          <span className="rounded-md bg-line-soft px-1.5 py-0.5 text-[10px] font-medium text-moss">
+          <span className="rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-[#d92c20]">
             Year {activeYear}
           </span>
         </h2>
@@ -467,54 +467,6 @@ export function DecisionAnalysis({
             <Line label="Total principal" value={fmtMoney(totalPrincipal, currency)} tone="positive" />
           </div>
         </Col>
-      </div>
-
-      <div className="mx-4 mb-4 rounded-lg border border-line-soft bg-cream/50 px-3 py-2.5">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-sage">
-          Total capital comparison (year {activeYear})
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-md border border-line-soft bg-card px-2.5 py-2">
-            <p className="text-[10px] text-sage">Buy & Self-Use total capital</p>
-            <p className="mt-0.5 text-[12px] font-semibold tabular-nums text-ink">
-              {fmtMoney(buySelfUseTotalCapital, currency)}
-            </p>
-            <p className="mt-1 text-[11px] text-moss">
-              {Math.abs(buyVsRentCapitalPct) < 0.05 ? (
-                "Matches Rent & Invest total capital"
-              ) : buyVsRentCapitalPct > 0 ? (
-                <>
-                  <span className="font-semibold text-positive">{fmtPct(buyVsRentCapitalPct)}</span> above Rent &
-                  Invest
-                </>
-              ) : (
-                <>
-                  <span className="font-semibold text-negative">{fmtPct(Math.abs(buyVsRentCapitalPct))}</span> below
-                  Rent & Invest
-                </>
-              )}
-            </p>
-          </div>
-          <div className="rounded-md border border-line-soft bg-card px-2.5 py-2">
-            <p className="text-[10px] text-sage">Rent & Invest total capital</p>
-            <p className="mt-0.5 text-[12px] font-semibold tabular-nums text-ink">{fmtMoney(totalCapital, currency)}</p>
-            <p className="mt-1 text-[11px] text-moss">
-              {Math.abs(rentVsBuyCapitalPct) < 0.05 ? (
-                "Matches Buy & Self-Use total capital"
-              ) : rentVsBuyCapitalPct > 0 ? (
-                <>
-                  <span className="font-semibold text-positive">{fmtPct(rentVsBuyCapitalPct)}</span> above Buy &
-                  Self-Use
-                </>
-              ) : (
-                <>
-                  <span className="font-semibold text-negative">{fmtPct(Math.abs(rentVsBuyCapitalPct))}</span> below
-                  Buy & Self-Use
-                </>
-              )}
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );

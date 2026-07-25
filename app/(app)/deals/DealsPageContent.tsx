@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useDeals, deleteDeal } from "@/lib/store";
 import { analyzeDeal } from "@/lib/engine";
@@ -9,6 +10,15 @@ import { fmtMoney, fmtPct } from "@/lib/format";
 import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { DealAnalysisView } from "@/components/analysis/DealAnalysisView";
 import type { Deal } from "@/lib/types";
+
+const DealsMap = dynamic(() => import("@/components/DealsMap").then((m) => m.DealsMap), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-[480px] items-center justify-center p-6 text-[12px] text-moss">
+      Loading map…
+    </div>
+  ),
+});
 
 type View = "metrics" | "map";
 
@@ -86,7 +96,7 @@ export default function DealsPageContent() {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { value: country, set: setCountry, options: ["All", "CH", "DE"], label: "Country" },
+              { value: country, set: setCountry, options: ["All", "CH", "DE", "OTHER"], label: "Country" },
               { value: city, set: setCity, options: cities, label: "City" },
               { value: type, set: setType, options: types, label: "Type" },
             ].map((f) => (
@@ -146,7 +156,7 @@ export default function DealsPageContent() {
 
         <div className="flex-1 overflow-y-auto">
           {view === "map" ? (
-            <MapView
+            <DealsMap
               deals={filtered}
               selectedId={isDraft ? null : selectedFromList?.id ?? null}
               onSelect={setSelectedId}
@@ -216,7 +226,7 @@ function DealCard({
   active: boolean;
   onSelect: () => void;
 }) {
-  const a = useMemo(() => analyzeDeal(deal.input), [deal.input]);
+  const a = useMemo(() => analyzeDeal(deal.input, deal.country), [deal.input, deal.country]);
   return (
     <button
       type="button"
@@ -258,67 +268,5 @@ function DealCard({
         </p>
       </div>
     </button>
-  );
-}
-
-function MapView({
-  deals,
-  selectedId,
-  onSelect,
-}: {
-  deals: Deal[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
-  return (
-    <div className="h-full p-6">
-      <div className="relative h-full min-h-[480px] overflow-hidden rounded-xl border border-line bg-[#eef0e8]">
-        <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-          <path d="M0 68 Q 18 60 32 66 T 62 62 T 100 66 L 100 100 L 0 100 Z" fill="#e4e8da" />
-          <path d="M0 82 Q 25 74 48 80 T 100 78 L 100 100 L 0 100 Z" fill="#dde2d0" />
-          <path
-            d="M-4 30 Q 20 24 38 34 T 74 30 T 106 38"
-            fill="none"
-            stroke="#c9d4e2"
-            strokeWidth="2.5"
-            opacity="0.9"
-          />
-          {Array.from({ length: 9 }).map((_, i) => (
-            <line key={`v${i}`} x1={(i + 1) * 10} y1="0" x2={(i + 1) * 10} y2="100" stroke="#d8dbc9" strokeWidth="0.25" />
-          ))}
-          {Array.from({ length: 9 }).map((_, i) => (
-            <line key={`h${i}`} x1="0" y1={(i + 1) * 10} x2="100" y2={(i + 1) * 10} stroke="#d8dbc9" strokeWidth="0.25" />
-          ))}
-        </svg>
-
-        {deals.map((deal) => (
-          <button
-            key={deal.id}
-            type="button"
-            onClick={() => onSelect(deal.id)}
-            className="group absolute -translate-x-1/2 -translate-y-full"
-            style={{ left: `${deal.mapX * 100}%`, top: `${deal.mapY * 100}%` }}
-            title={`${deal.name}, ${deal.city}`}
-          >
-            <div
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-md transition-transform group-hover:scale-105 ${
-                selectedId === deal.id ? "bg-pine text-white" : "bg-white text-ink"
-              }`}
-            >
-              {fmtMoney(deal.input.purchasePrice, deal.currency)}
-            </div>
-            <div
-              className={`mx-auto h-2 w-2 rotate-45 ${
-                selectedId === deal.id ? "bg-pine" : "bg-white"
-              } -mt-1 shadow-md`}
-            />
-          </button>
-        ))}
-
-        <div className="absolute bottom-4 left-4 rounded-lg bg-white/90 px-3 py-2 text-[11px] text-moss shadow-sm">
-          Stylized pipeline map — real map tiles coming with Map Search.
-        </div>
-      </div>
-    </div>
   );
 }

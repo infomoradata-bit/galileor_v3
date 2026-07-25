@@ -10,7 +10,13 @@ let cache: Deal[] | null = null;
 const listeners = new Set<() => void>();
 
 function normalizeDeal(deal: Deal): Deal {
-  return { ...deal, input: normalizeInput(deal.input) };
+  const country = deal.country === "DE" || deal.country === "OTHER" ? deal.country : "CH";
+  return {
+    ...deal,
+    country,
+    currency: country === "CH" ? "CHF" : "EUR",
+    input: normalizeInput(deal.input),
+  };
 }
 
 function load(): Deal[] {

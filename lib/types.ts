@@ -2,7 +2,7 @@ import type { RepaymentStructure } from "./repayment";
 
 export type { RepaymentStructure } from "./repayment";
 
-export type Country = "CH" | "DE";
+export type Country = "CH" | "DE" | "OTHER";
 export type Currency = "CHF" | "EUR";
 export type PropertyType = "Apartment" | "House" | "Multi-family" | "Commercial";
 export type MortgageSystem = "annuity" | "constant";
@@ -86,9 +86,12 @@ export interface Deal {
   yearBuilt: number;
   rooms: number;
   notes: string;
-  /** 0..1 relative coordinates for the stylized map */
+  /** @deprecated Relative 0..1 coords for the old stylized map — kept for saved deals. */
   mapX: number;
   mapY: number;
+  /** WGS84 coordinates for the OpenStreetMap view (set by geocoding). */
+  lat?: number;
+  lng?: number;
   /** hue used for the placeholder photo */
   photoHue: number;
   input: CalculationInput;

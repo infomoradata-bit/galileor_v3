@@ -16,7 +16,7 @@ export default function DashboardPage() {
     () =>
       [...deals]
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((deal) => ({ deal, a: analyzeDeal(deal.input) })),
+        .map((deal) => ({ deal, a: analyzeDeal(deal.input, deal.country) })),
     [deals]
   );
 
