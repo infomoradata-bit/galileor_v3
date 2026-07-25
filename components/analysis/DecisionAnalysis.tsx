@@ -208,12 +208,21 @@ export function DecisionAnalysis({
     );
   }
 
-  const equity = bsu.equity;
+  const buySelfUseTotalCapital =
+    bsu.equity + bsu.buyRentSavingsInvested + bsu.buyRentSavingsReturn;
   const totalCapital = rni.equityCapital;
-  const equityVsCapitalPct =
-    totalCapital > 0 ? ((equity - totalCapital) / totalCapital) * 100 : equity > 0 ? 100 : 0;
-  const capitalVsEquityPct =
-    equity > 0 ? ((totalCapital - equity) / equity) * 100 : totalCapital > 0 ? -100 : 0;
+  const buyVsRentCapitalPct =
+    totalCapital > 0
+      ? ((buySelfUseTotalCapital - totalCapital) / totalCapital) * 100
+      : buySelfUseTotalCapital > 0
+        ? 100
+        : 0;
+  const rentVsBuyCapitalPct =
+    buySelfUseTotalCapital > 0
+      ? ((totalCapital - buySelfUseTotalCapital) / buySelfUseTotalCapital) * 100
+      : totalCapital > 0
+        ? -100
+        : 0;
 
   return (
     <div className="rounded-xl border border-line bg-card shadow-[0_1px_2px_rgba(27,48,34,0.04)]">
@@ -324,18 +333,27 @@ export function DecisionAnalysis({
             </div>
             <div className="mt-2">
               <HighlightTotal label="Equity" value={bsu.equity} currency={currency} />
+              <HighlightTotal
+                label="Total capital"
+                value={buySelfUseTotalCapital}
+                currency={currency}
+                className="mt-2"
+              />
               <p className="mt-1.5 text-[10px] leading-snug text-sage">
-                {Math.abs(equityVsCapitalPct) < 0.05 ? (
+                Equity + invested buy-rent savings + buy-rent savings return
+              </p>
+              <p className="mt-1 text-[10px] leading-snug text-sage">
+                {Math.abs(buyVsRentCapitalPct) < 0.05 ? (
                   "Same as Rent & Invest total capital"
-                ) : equityVsCapitalPct > 0 ? (
+                ) : buyVsRentCapitalPct > 0 ? (
                   <>
-                    <span className="font-semibold text-positive">{fmtPct(equityVsCapitalPct)}</span> higher than
-                    total capital
+                    <span className="font-semibold text-positive">{fmtPct(buyVsRentCapitalPct)}</span> higher than
+                    Rent & Invest
                   </>
                 ) : (
                   <>
-                    <span className="font-semibold text-negative">{fmtPct(Math.abs(equityVsCapitalPct))}</span> lower
-                    than total capital
+                    <span className="font-semibold text-negative">{fmtPct(Math.abs(buyVsRentCapitalPct))}</span> lower
+                    than Rent & Invest
                   </>
                 )}
               </p>
@@ -378,17 +396,17 @@ export function DecisionAnalysis({
             <div className="mt-2">
               <HighlightTotal label="Total capital" value={rni.equityCapital} currency={currency} />
               <p className="mt-1.5 text-[10px] leading-snug text-sage">
-                {Math.abs(capitalVsEquityPct) < 0.05 ? (
-                  "Same as Buy & Self-Use equity"
-                ) : capitalVsEquityPct > 0 ? (
+                {Math.abs(rentVsBuyCapitalPct) < 0.05 ? (
+                  "Same as Buy & Self-Use total capital"
+                ) : rentVsBuyCapitalPct > 0 ? (
                   <>
-                    <span className="font-semibold text-positive">{fmtPct(capitalVsEquityPct)}</span> higher than
-                    equity
+                    <span className="font-semibold text-positive">{fmtPct(rentVsBuyCapitalPct)}</span> higher than
+                    Buy & Self-Use
                   </>
                 ) : (
                   <>
-                    <span className="font-semibold text-negative">{fmtPct(Math.abs(capitalVsEquityPct))}</span> lower
-                    than equity
+                    <span className="font-semibold text-negative">{fmtPct(Math.abs(rentVsBuyCapitalPct))}</span> lower
+                    than Buy & Self-Use
                   </>
                 )}
               </p>
@@ -453,24 +471,26 @@ export function DecisionAnalysis({
 
       <div className="mx-4 mb-4 rounded-lg border border-line-soft bg-cream/50 px-3 py-2.5">
         <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-sage">
-          Equity vs total capital (year {activeYear})
+          Total capital comparison (year {activeYear})
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="rounded-md border border-line-soft bg-card px-2.5 py-2">
-            <p className="text-[10px] text-sage">Buy & Self-Use equity</p>
-            <p className="mt-0.5 text-[12px] font-semibold tabular-nums text-ink">{fmtMoney(equity, currency)}</p>
+            <p className="text-[10px] text-sage">Buy & Self-Use total capital</p>
+            <p className="mt-0.5 text-[12px] font-semibold tabular-nums text-ink">
+              {fmtMoney(buySelfUseTotalCapital, currency)}
+            </p>
             <p className="mt-1 text-[11px] text-moss">
-              {Math.abs(equityVsCapitalPct) < 0.05 ? (
+              {Math.abs(buyVsRentCapitalPct) < 0.05 ? (
                 "Matches Rent & Invest total capital"
-              ) : equityVsCapitalPct > 0 ? (
+              ) : buyVsRentCapitalPct > 0 ? (
                 <>
-                  <span className="font-semibold text-positive">{fmtPct(equityVsCapitalPct)}</span> above total
-                  capital
+                  <span className="font-semibold text-positive">{fmtPct(buyVsRentCapitalPct)}</span> above Rent &
+                  Invest
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-negative">{fmtPct(Math.abs(equityVsCapitalPct))}</span> below
-                  total capital
+                  <span className="font-semibold text-negative">{fmtPct(Math.abs(buyVsRentCapitalPct))}</span> below
+                  Rent & Invest
                 </>
               )}
             </p>
@@ -479,16 +499,17 @@ export function DecisionAnalysis({
             <p className="text-[10px] text-sage">Rent & Invest total capital</p>
             <p className="mt-0.5 text-[12px] font-semibold tabular-nums text-ink">{fmtMoney(totalCapital, currency)}</p>
             <p className="mt-1 text-[11px] text-moss">
-              {Math.abs(capitalVsEquityPct) < 0.05 ? (
-                "Matches Buy & Self-Use equity"
-              ) : capitalVsEquityPct > 0 ? (
+              {Math.abs(rentVsBuyCapitalPct) < 0.05 ? (
+                "Matches Buy & Self-Use total capital"
+              ) : rentVsBuyCapitalPct > 0 ? (
                 <>
-                  <span className="font-semibold text-positive">{fmtPct(capitalVsEquityPct)}</span> above equity
+                  <span className="font-semibold text-positive">{fmtPct(rentVsBuyCapitalPct)}</span> above Buy &
+                  Self-Use
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-negative">{fmtPct(Math.abs(capitalVsEquityPct))}</span> below
-                  equity
+                  <span className="font-semibold text-negative">{fmtPct(Math.abs(rentVsBuyCapitalPct))}</span> below
+                  Buy & Self-Use
                 </>
               )}
             </p>
