@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { useDeals } from "@/lib/store";
+import { useDeals, useDealsLoaded } from "@/lib/store";
 import { analyzeDeal } from "@/lib/engine";
 import { fmtMoney } from "@/lib/format";
 import { Card, Pill } from "@/components/ui";
@@ -11,6 +11,7 @@ import { AffordabilityCalculator } from "@/components/AffordabilityCalculator";
 
 export default function DashboardPage() {
   const deals = useDeals();
+  const loaded = useDealsLoaded();
 
   const dealRows = useMemo(
     () =>
@@ -81,11 +82,17 @@ export default function DashboardPage() {
           ))}
           {dealRows.length === 0 && (
             <p className="px-5 py-10 text-center text-sm text-moss">
-              No deals yet.{" "}
-              <Link href="/deals/new" className="font-medium text-pine hover:underline">
-                Create your first one
-              </Link>
-              .
+              {loaded ? (
+                <>
+                  No deals yet.{" "}
+                  <Link href="/deals/new" className="font-medium text-pine hover:underline">
+                    Create your first one
+                  </Link>
+                  .
+                </>
+              ) : (
+                "Loading deals…"
+              )}
             </p>
           )}
         </div>

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { displayNameFor, initialsFor, useSupabaseUser } from "@/lib/supabase/useUser";
 import { SoonBadge } from "./ui";
 
 type Item = {
@@ -148,6 +150,13 @@ const ITEMS: Item[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const user = useSupabaseUser();
+
+  async function signOut() {
+    await getSupabaseBrowserClient()?.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-pine text-white">
@@ -184,11 +193,11 @@ export function Sidebar() {
       <div className="border-t border-white/10 px-4 py-4">
         <div className="flex items-center gap-3 px-1">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold">
-            LM
+            {initialsFor(user)}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-medium">Lukas Meier</p>
-            <p className="truncate text-[11px] text-white/50">lukas.meier@gmail.com</p>
+            <p className="truncate text-[13px] font-medium">{displayNameFor(user)}</p>
+            <p className="truncate text-[11px] text-white/50">{user?.email ?? "—"}</p>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-2 px-1 text-[11px] text-white/45">
@@ -196,7 +205,7 @@ export function Sidebar() {
           AI Engine: Operational
         </div>
         <button
-          onClick={() => router.push("/")}
+          onClick={signOut}
           className="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-white/65 transition-colors hover:bg-white/8 hover:text-white"
         >
           <svg {...iconProps}>

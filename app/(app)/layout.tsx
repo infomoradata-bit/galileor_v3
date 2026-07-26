@@ -1,6 +1,13 @@
+import { redirect } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getCurrentUser } from "@/lib/supabase/server";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  // Fail closed: protected app shell always requires a real Supabase session.
+  if (!isSupabaseConfigured) redirect("/login?error=" + encodeURIComponent("Supabase is not configured."));
+  if (!(await getCurrentUser())) redirect("/login");
+
   return (
     <div className="min-h-screen bg-cream">
       <div className="no-print">

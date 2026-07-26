@@ -1,20 +1,19 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { getDeal, useDeal, deleteDeal } from "@/lib/store";
+import { useEffect } from "react";
+import { useDeal, useDealsLoaded, deleteDeal } from "@/lib/store";
 import { DealAnalysisView } from "@/components/analysis/DealAnalysisView";
 
 export default function DealAnalysisPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const deal = useDeal(params.id);
-  const mounted = useRef(false);
+  const loaded = useDealsLoaded();
 
   useEffect(() => {
-    mounted.current = true;
-    if (!getDeal(params.id)) router.replace("/deals");
-  }, [params.id, router]);
+    if (loaded && !deal) router.replace("/deals");
+  }, [loaded, deal, router]);
 
   if (!deal) {
     return <div className="p-10 text-sm text-moss">Loading deal…</div>;

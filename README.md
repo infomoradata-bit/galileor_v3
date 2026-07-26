@@ -10,7 +10,7 @@ rent-vs-buy scenarios, a stress test and a scored recommendation.
 - Next.js (App Router) + TypeScript
 - Tailwind CSS 4
 - Recharts
-- Deals are persisted in `localStorage` in the MVP (Supabase auth & storage planned)
+- Supabase for authentication and deal storage
 
 ## Getting started
 
@@ -21,12 +21,29 @@ npm run dev
 
 Open http://localhost:3000.
 
+## Supabase setup
+
+1. Run `supabase/schema.sql` in the Supabase SQL editor. It creates the `deals` table
+   and the row-level-security policies that scope every read and write to `auth.uid()`.
+2. Copy `.env.example` to `.env.local` and fill in the project URL and publishable
+   (anon) key from **Project Settings → API**. Set the same two variables in Vercel.
+3. In **Authentication → URL Configuration**, set the site URL and add
+   `https://<your-domain>/auth/callback` and `http://localhost:3000/auth/callback`
+   as redirect URLs.
+
+Both variables are `NEXT_PUBLIC_*` and safe to expose — RLS is what protects the data.
+Never put the service-role or secret key in this app.
+
+Without the environment variables, protected routes redirect to `/login` and refuse
+to open. Every new Supabase account starts with zero deals.
+
 ## Routes
 
 | Route              | Page                                            |
 | ------------------ | ----------------------------------------------- |
 | `/`                | Landing page                                    |
-| `/login`, `/signup`| Auth UI (MVP: continues straight into the app)  |
+| `/login`, `/signup`| Supabase email/password and Google sign-in      |
+| `/auth/callback`   | Exchanges the OAuth / email-confirm code        |
 | `/dashboard`       | Overview with portfolio KPIs and recent deals   |
 | `/deals`           | Deals workspace (list + metrics / map toggle)   |
 | `/deals/new`       | Full deal input form                            |

@@ -1,16 +1,89 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+const inputCls =
+  "w-full rounded-lg border border-line bg-cream px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-sage focus:border-pine";
 
 export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const isLogin = mode === "login";
+  const next = searchParams.get("next") ?? "/dashboard";
 
-  function enter(e?: React.FormEvent) {
-    e?.preventDefault();
-    // MVP: no real auth — Supabase will be wired in later.
-    router.push("/dashboard");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(searchParams.get("error"));
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setError("Supabase is not configured. Add the environment variables and reload.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+        setBusy(false);
+        return;
+      }
+      router.push(next);
+      router.refresh();
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+      return;
+    }
+    // No session means the project requires email confirmation first.
+    if (data.session) {
+      router.push(next);
+      router.refresh();
+      return;
+    }
+    setNotice("Check your inbox to confirm your email address, then sign in.");
+    setBusy(false);
+  }
+
+  async function google() {
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setError("Supabase is not configured. Add the environment variables and reload.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+    }
   }
 
   return (
@@ -28,28 +101,55 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
             : "Start underwriting deals in minutes."}
         </p>
 
-        <form onSubmit={enter} className="space-y-4">
+        {error && (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+            {notice}
+          </p>
+        )}
+
+        <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-moss">Email</label>
+            <label className="mb-1.5 block text-xs font-medium text-moss" htmlFor="email">
+              Email
+            </label>
             <input
+              id="email"
               type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full rounded-lg border border-line bg-cream px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-sage focus:border-pine"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-moss">Password</label>
+            <label className="mb-1.5 block text-xs font-medium text-moss" htmlFor="password">
+              Password
+            </label>
             <input
+              id="password"
               type="password"
+              required
+              minLength={6}
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-lg border border-line bg-cream px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-sage focus:border-pine"
+              className={inputCls}
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-lg bg-pine px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-pine-deep"
+            disabled={busy}
+            className="w-full rounded-lg bg-pine px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-pine-deep disabled:opacity-60"
           >
-            {isLogin ? "Sign in" : "Sign up"}
+            {busy ? "Please wait…" : isLogin ? "Sign in" : "Sign up"}
           </button>
         </form>
 
@@ -60,8 +160,9 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
         </div>
 
         <button
-          onClick={() => enter()}
-          className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-line px-4 py-2.5 text-sm font-medium transition-colors hover:bg-line-soft"
+          onClick={google}
+          disabled={busy}
+          className="flex w-full items-center justify-center gap-2.5 rounded-lg border border-line px-4 py-2.5 text-sm font-medium transition-colors hover:bg-line-soft disabled:opacity-60"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4">
             <path

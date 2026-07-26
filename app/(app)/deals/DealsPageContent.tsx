@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { useDeals, deleteDeal } from "@/lib/store";
+import { useDeals, useDealsLoaded, deleteDeal } from "@/lib/store";
 import { analyzeDeal } from "@/lib/engine";
 import { blankDeal, formatDealAddress } from "@/lib/defaults";
 import { fmtMoney, fmtPct } from "@/lib/format";
@@ -26,6 +26,7 @@ export const DRAFT_DEAL_ID = "__draft__";
 
 export default function DealsPageContent() {
   const deals = useDeals();
+  const loaded = useDealsLoaded();
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>("metrics");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -179,7 +180,9 @@ export default function DealsPageContent() {
             />
           ))}
           {filtered.length === 0 && !isDraft && (
-            <p className="py-10 text-center text-sm text-moss">No deals match these filters.</p>
+            <p className="py-10 text-center text-sm text-moss">
+              {loaded ? "No deals match these filters." : "Loading deals…"}
+            </p>
           )}
         </div>
       </div>

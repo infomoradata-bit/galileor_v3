@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { AuthCard } from "@/components/AuthCard";
 
 export default function LoginPage() {
-  return <AuthCard mode="login" />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-cream" />}>
+      <AuthCard mode="login" />
+    </Suspense>
+  );
 }

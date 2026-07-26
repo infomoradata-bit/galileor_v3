@@ -85,10 +85,10 @@ export default function LandingPage() {
             Start underwriting
           </Link>
           <Link
-            href="/deals/bellevue-42-zuerich"
+            href="/signup"
             className="rounded-lg border border-line bg-card px-6 py-3 text-sm font-medium transition-colors hover:border-sage"
           >
-            View a sample deal
+            Create free account
           </Link>
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-2.5">
