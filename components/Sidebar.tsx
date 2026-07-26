@@ -153,7 +153,7 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-pine text-white">
       <div className="px-6 pb-5 pt-7">
         <Link href="/dashboard" className="font-serif text-[26px] font-semibold tracking-wide">
-          Galileor
+          Paladior
         </Link>
       </div>
 

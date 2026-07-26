@@ -47,7 +47,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-cream text-ink">
       {/* Nav */}
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <span className="font-serif text-2xl font-semibold tracking-wide">Galileor</span>
+        <span className="font-serif text-2xl font-semibold tracking-wide">Paladior</span>
         <nav className="flex items-center gap-3">
           <Link
             href="/login"
@@ -73,7 +73,7 @@ export default function LandingPage() {
           Underwrite real estate deals before they eat your capital.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-moss">
-          Galileor models the full financial picture of a property — acquisition, financing,
+          Paladior models the full financial picture of a property — acquisition, financing,
           cashflow, wealth projection and scenarios — and returns a scored recommendation
           before you sign anything.
         </p>
@@ -139,7 +139,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="mx-auto flex max-w-6xl items-center justify-between px-6 py-10 text-sm text-moss">
-        <span className="font-serif text-lg font-semibold text-ink">Galileor</span>
+        <span className="font-serif text-lg font-semibold text-ink">Paladior</span>
         <span>Built for small investors in Switzerland & Germany.</span>
       </footer>
     </div>

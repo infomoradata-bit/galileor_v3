@@ -1,7 +1,7 @@
-# Galileor
+# Paladior
 
 Real estate investment analysis for small investors in Switzerland and Germany.
-Enter a deal — purchase price, rent, financing, costs, assumptions — and Galileor models
+Enter a deal — purchase price, rent, financing, costs, assumptions — and Paladior models
 the full financial picture: mortgage schedule, cashflows, yields, wealth projection,
 rent-vs-buy scenarios, a stress test and a scored recommendation.
 

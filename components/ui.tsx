@@ -83,7 +83,7 @@ export function PageStub({
           </svg>
         </div>
         <p className="max-w-sm text-sm text-moss">
-          This module is part of the Galileor roadmap and will be available in an upcoming
+          This module is part of the Paladior roadmap and will be available in an upcoming
           release.
         </p>
       </Card>

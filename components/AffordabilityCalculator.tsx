@@ -573,11 +573,11 @@ export function AffordabilityCalculator() {
         </div>
       </div>
 
-      {/* Housing cost timeline — Galileor value-add -------------------------------- */}
+      {/* Housing cost timeline — Paladior value-add -------------------------------- */}
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="text-[13px] font-semibold tracking-tight">
-            Warum ist das für Galileor interessant?
+            Warum ist das für Paladior interessant?
           </h3>
           <span className="rounded-md bg-line-soft px-2 py-0.5 text-[10px] font-medium text-moss">
             Actual financing timeline
@@ -586,7 +586,7 @@ export function AffordabilityCalculator() {
         <p className="mt-2 max-w-3xl text-[12px] leading-relaxed text-moss">
           The bank affordability test is a <em>snapshot</em> with conservative assumptions. In
           reality, your monthly housing costs follow a <strong className="text-ink">two-phase
-          timeline</strong>. Galileor separates the bank stress test from what you actually pay — and
+          timeline</strong>. Paladior separates the bank stress test from what you actually pay — and
           shows how costs evolve year by year.
         </p>
 

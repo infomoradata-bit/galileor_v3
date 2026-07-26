@@ -72,7 +72,7 @@ export async function geocodeAddress(
         headers: {
           Accept: "application/json",
           // Nominatim requires a valid identifying User-Agent.
-          "User-Agent": "Galileor/0.1 (real-estate underwriting; local-dev)",
+          "User-Agent": "Paladior/0.1 (real-estate underwriting; local-dev)",
         },
       });
       if (!res.ok) throw new Error(`Nominatim ${res.status}`);

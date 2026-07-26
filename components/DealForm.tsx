@@ -6,6 +6,7 @@ import type { CalculationInput, Country, Deal, PropertyType } from "@/lib/types"
 import { defaultInput } from "@/lib/defaults";
 import { upsertDeal } from "@/lib/store";
 import { Card } from "@/components/ui";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -141,7 +142,26 @@ export function DealForm({ existing }: { existing?: Deal }) {
           <input className={inputCls} value={deal.name} placeholder="e.g. Bellevue 42" onChange={(e) => patch({ name: e.target.value })} />
         </Field>
         <Field label="Address">
-          <input className={inputCls} value={deal.address} placeholder="Street and number" onChange={(e) => patch({ address: e.target.value })} />
+          <AddressAutocomplete
+            className={inputCls}
+            value={deal.address}
+            country={deal.country}
+            city={deal.city}
+            zip={deal.zip}
+            placeholder="Street and number"
+            onQueryChange={(address) => patch({ address, lat: undefined, lng: undefined })}
+            onSelect={(s) =>
+              patch({
+                address: s.address,
+                zip: s.zip || deal.zip,
+                city: s.city || deal.city,
+                country: s.country,
+                currency: s.country === "CH" ? "CHF" : "EUR",
+                lat: s.lat,
+                lng: s.lng,
+              })
+            }
+          />
         </Field>
         <Field label="ZIP">
           <input className={inputCls} value={deal.zip} placeholder="8001" onChange={(e) => patch({ zip: e.target.value })} />

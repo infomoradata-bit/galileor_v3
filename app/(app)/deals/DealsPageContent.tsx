@@ -28,6 +28,7 @@ export default function DealsPageContent() {
   const deals = useDeals();
   const searchParams = useSearchParams();
   const [view, setView] = useState<View>("metrics");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draftDeal, setDraftDeal] = useState<Deal | null>(null);
   const [country, setCountry] = useState("All");
@@ -82,17 +83,64 @@ export default function DealsPageContent() {
 
   return (
     <div className="flex h-screen">
-      <div className="flex w-[320px] shrink-0 flex-col border-r border-line bg-card">
+      {!sidebarOpen && (
+        <div className="flex w-12 shrink-0 flex-col items-center gap-3 border-r border-line bg-card py-4">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            title="Expand deals sidebar"
+            aria-label="Expand deals sidebar"
+            className="rounded-lg border border-line p-1.5 text-moss transition-colors hover:bg-line-soft hover:text-ink"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M6 3.5 10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={startNewDeal}
+            title="New deal"
+            aria-label="New deal"
+            className="rounded-lg bg-pine p-1.5 text-white transition-colors hover:bg-pine-deep"
+          >
+            <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <path d="M8 3.5v9M3.5 8h9" strokeLinecap="round" />
+            </svg>
+          </button>
+          <span className="mt-1 [writing-mode:vertical-rl] text-[11px] font-semibold tracking-wide text-sage">
+            Deals
+          </span>
+        </div>
+      )}
+
+      <div
+        className={`flex shrink-0 flex-col overflow-hidden border-r border-line bg-card transition-all duration-200 ${
+          sidebarOpen ? "w-[320px]" : "w-0 border-r-0"
+        }`}
+      >
         <div className="border-b border-line-soft p-4">
           <div className="mb-3 flex items-center justify-between">
             <h1 className="text-lg font-semibold tracking-tight">Deals</h1>
-            <button
-              type="button"
-              onClick={startNewDeal}
-              className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-pine-deep"
-            >
-              + New
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={startNewDeal}
+                className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-pine-deep"
+              >
+                + New
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                title="Collapse deals sidebar"
+                aria-label="Collapse deals sidebar"
+                className="rounded-lg border border-line p-1.5 text-moss transition-colors hover:bg-line-soft hover:text-ink"
+              >
+                <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6">
+                  <path d="M10 3.5 5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-3 gap-2">
             {[

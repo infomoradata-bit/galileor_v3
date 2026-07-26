@@ -4,7 +4,9 @@ import { useSyncExternalStore } from "react";
 import type { Deal } from "./types";
 import { SEED_DEALS, normalizeInput } from "./defaults";
 
-const STORAGE_KEY = "galileor.deals.v2";
+const STORAGE_KEY = "paladior.deals.v2";
+/** Deals saved before the rename to Paladior. */
+const LEGACY_STORAGE_KEY = "galileor.deals.v2";
 
 let cache: Deal[] | null = null;
 const listeners = new Set<() => void>();
@@ -23,9 +25,13 @@ function load(): Deal[] {
   if (cache) return cache;
   if (typeof window === "undefined") return SEED_DEALS.map(normalizeDeal);
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw =
+      window.localStorage.getItem(STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (raw) {
       cache = (JSON.parse(raw) as Deal[]).map(normalizeDeal);
+      persist();
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     } else {
       cache = SEED_DEALS.map(normalizeDeal);
       persist();

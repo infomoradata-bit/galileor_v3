@@ -16,7 +16,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-cream px-4">
       <Link href="/" className="mb-8 font-serif text-3xl font-semibold tracking-wide text-ink">
-        Galileor
+        Paladior
       </Link>
       <div className="w-full max-w-sm rounded-xl border border-line bg-card p-8 shadow-sm">
         <h1 className="mb-1 text-lg font-semibold tracking-tight">

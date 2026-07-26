@@ -13,7 +13,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Galileor — Real Estate Underwriting",
+  title: "Paladior — Real Estate Underwriting",
   description:
     "Underwrite real estate deals before they eat your capital. Deal analysis, scenarios, wealth projections and scored recommendations for CH & DE investors.",
 };

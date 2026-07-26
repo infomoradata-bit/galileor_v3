@@ -7,6 +7,7 @@ import { fmtMoney, fmtPct, fmtYears } from "@/lib/format";
 import { formatDealAddress } from "@/lib/defaults";
 import type { CalculationInput, Deal } from "@/lib/types";
 import { Pill } from "@/components/ui";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { AnalysisHeader } from "@/components/analysis/AnalysisHeader";
 import { KpiCard, kpiIcons } from "@/components/analysis/KpiCard";
 import { SummaryBoxes } from "@/components/analysis/SummaryBoxes";
@@ -203,11 +204,27 @@ export function DealAnalysisView({
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <input
-                    className={`${inputCls} min-w-[140px] flex-1`}
+                  <AddressAutocomplete
+                    className={`${inputCls} w-full`}
                     placeholder="Address"
                     value={deal.address}
-                    onChange={(e) => patchDeal({ address: e.target.value, lat: undefined, lng: undefined })}
+                    country={deal.country}
+                    city={deal.city}
+                    zip={deal.zip}
+                    onQueryChange={(address) =>
+                      patchDeal({ address, lat: undefined, lng: undefined })
+                    }
+                    onSelect={(s) =>
+                      patchDeal({
+                        address: s.address,
+                        zip: s.zip || deal.zip,
+                        city: s.city || deal.city,
+                        country: s.country,
+                        currency: s.country === "CH" ? "CHF" : "EUR",
+                        lat: s.lat,
+                        lng: s.lng,
+                      })
+                    }
                   />
                   <input
                     className={`${inputCls} w-20`}
