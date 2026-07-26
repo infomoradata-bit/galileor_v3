@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   computeAffordability,
   computeFinancingComparison,
@@ -11,6 +11,12 @@ import {
   type BuyerInput,
   type FinancingPresetId,
 } from "@/lib/affordability";
+import {
+  EMPTY_BUYER,
+  loadAffordabilitySettings,
+  saveAffordabilitySettings,
+  type AffordabilitySettings,
+} from "@/lib/userSettings";
 import { fmtMoney, fmtNumber, fmtPct } from "@/lib/format";
 import { Card, InfoTip } from "@/components/ui";
 import {
@@ -35,17 +41,19 @@ function NumInput({
   step = 1000,
   suffix,
   prefix,
+  readOnly = false,
 }: {
   value: number;
   onChange: (v: number) => void;
   step?: number;
   suffix?: string;
   prefix?: string;
+  readOnly?: boolean;
 }) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
 
-  const display = focused ? text : value === 0 ? "" : String(value);
+  const display = focused && !readOnly ? text : value === 0 ? "" : String(value);
 
   return (
     <span className="inline-flex items-center gap-1">
@@ -54,17 +62,22 @@ function NumInput({
         type="number"
         step={step}
         value={display}
+        readOnly={readOnly}
         onFocus={() => {
+          if (readOnly) return;
           setFocused(true);
           setText(String(value));
         }}
         onBlur={() => setFocused(false)}
         onChange={(e) => {
+          if (readOnly) return;
           setText(e.target.value);
           const parsed = parseFloat(e.target.value.replace(/'/g, "").replace(",", "."));
           onChange(Number.isFinite(parsed) ? parsed : 0);
         }}
-        className="w-full rounded-md border border-line bg-cream px-2 py-1 text-right text-[13px] font-medium tabular-nums outline-none [appearance:textfield] focus:border-pine [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className={`w-full rounded-md border border-line bg-cream px-2 py-1 text-right text-[13px] font-medium tabular-nums outline-none [appearance:textfield] focus:border-pine [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${
+          readOnly ? "cursor-default opacity-80" : ""
+        }`}
       />
       {suffix && <span className="text-[11px] text-sage">{suffix}</span>}
     </span>
@@ -148,21 +161,36 @@ const STATUS_STYLE = {
 /* -------------------------------------------------------------------------- */
 
 export function AffordabilityCalculator() {
-  const [buyer, setBuyer] = useState<BuyerInput>({
-    grossIncomePrimary: 120000,
-    grossIncomeSecondary: 60000,
-    recognizedBonusIncome: 0,
-    otherRecognizedIncome: 0,
-    existingAnnualObligations: 0,
-    availableEquity: 300000,
-    purchasePrice: 1000000,
-    bankValuation: 1000000,
-    actualMortgageRate: 0.025,
-    annualInsurance: 1200,
-  });
+  const [buyer, setBuyer] = useState<BuyerInput>(EMPTY_BUYER);
   const [params, setParams] = useState<BankParams>(DEFAULT_BANK_PARAMS);
   const [showParams, setShowParams] = useState(false);
   const [selectedPresetId, setSelectedPresetId] = useState<FinancingPresetId>("20");
+  const [editing, setEditing] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [draft, setDraft] = useState<AffordabilitySettings | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void loadAffordabilitySettings().then((settings) => {
+      if (!active) return;
+      if (settings) {
+        setBuyer(settings.buyer);
+        setParams(settings.params);
+        setSelectedPresetId(settings.selectedPresetId);
+        setEditing(false);
+        setSavedAt(Date.now());
+      } else {
+        setEditing(true);
+      }
+      setLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selectedPreset =
     FINANCING_PRESETS.find((p) => p.id === selectedPresetId) ?? FINANCING_PRESETS[0];
@@ -207,8 +235,40 @@ export function AffordabilityCalculator() {
   const patchBuyer = (p: Partial<BuyerInput>) => setBuyer((b) => ({ ...b, ...p }));
   const patchParams = (p: Partial<BankParams>) => setParams((v) => ({ ...v, ...p }));
 
+  function startEdit() {
+    setDraft({ buyer, params, selectedPresetId });
+    setSaveError(null);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    if (draft) {
+      setBuyer(draft.buyer);
+      setParams(draft.params);
+      setSelectedPresetId(draft.selectedPresetId);
+    }
+    setSaveError(null);
+    setEditing(false);
+  }
+
+  async function save() {
+    setSaving(true);
+    setSaveError(null);
+    const settings: AffordabilitySettings = { buyer, params, selectedPresetId };
+    const { error } = await saveAffordabilitySettings(settings);
+    setSaving(false);
+    if (error) {
+      setSaveError(error);
+      return;
+    }
+    setDraft(null);
+    setSavedAt(Date.now());
+    setEditing(false);
+  }
+
   const status = STATUS_STYLE[r.status];
   const ratioPctWidth = Math.min(Math.max(r.affordabilityRatio, 0), 0.5) / 0.5 * 100;
+  const readOnly = !editing;
 
   // Quick reference tables ---------------------------------------------------
   const equityRows = [100000, 150000, 200000, 300000, 400000].map((eq) => ({
@@ -291,7 +351,10 @@ export function AffordabilityCalculator() {
                 return (
                   <tr
                     key={row.presetId}
-                    onClick={() => setSelectedPresetId(row.presetId)}
+                    onClick={() => {
+                      if (!editing) return;
+                      setSelectedPresetId(row.presetId);
+                    }}
                     className={`cursor-pointer transition-colors hover:bg-cream ${
                       selected ? "bg-pine/5" : ""
                     }`}
@@ -358,35 +421,85 @@ export function AffordabilityCalculator() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,340px)_1fr]">
         {/* Inputs ------------------------------------------------------------ */}
         <Card className="p-5">
-          <h3 className="mb-3 text-[13px] font-semibold tracking-tight">Your numbers</h3>
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-[13px] font-semibold tracking-tight">Your numbers</h3>
+              <p className="mt-0.5 text-[10px] text-sage">
+                {!loaded
+                  ? "Loading…"
+                  : editing
+                    ? "Edit your figures, then save them to this account."
+                    : savedAt
+                      ? "Saved to your account — click Edit to change."
+                      : "Nothing saved yet."}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              {editing ? (
+                <>
+                  {draft && (
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      disabled={saving}
+                      className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-moss transition-colors hover:bg-line-soft disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void save()}
+                    disabled={saving || !loaded}
+                    className="rounded-md bg-pine px-2.5 py-1 text-[11px] font-medium text-white transition-colors hover:bg-pine-deep disabled:opacity-50"
+                  >
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-moss transition-colors hover:bg-line-soft"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          </div>
+          {saveError && (
+            <p className="mb-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] text-red-700">
+              {saveError}
+            </p>
+          )}
 
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sage">
             Income (gross / year)
           </p>
           <div className="space-y-2">
             <Field label="Primary gross income" tip="Main employment income, per year and gross.">
-              <NumInput value={buyer.grossIncomePrimary} onChange={(v) => patchBuyer({ grossIncomePrimary: v })} />
+              <NumInput readOnly={readOnly} value={buyer.grossIncomePrimary} onChange={(v) => patchBuyer({ grossIncomePrimary: v })} />
             </Field>
             <Field
               label="Secondary income"
               tip="A partner's income, if the bank recognizes it fully."
             >
-              <NumInput value={buyer.grossIncomeSecondary} onChange={(v) => patchBuyer({ grossIncomeSecondary: v })} />
+              <NumInput readOnly={readOnly} value={buyer.grossIncomeSecondary} onChange={(v) => patchBuyer({ grossIncomeSecondary: v })} />
             </Field>
             <Field
               label="Recognized bonus"
               tip="Bonuses are often only partly counted (e.g. an average of the last 3 years)."
             >
-              <NumInput value={buyer.recognizedBonusIncome} onChange={(v) => patchBuyer({ recognizedBonusIncome: v })} />
+              <NumInput readOnly={readOnly} value={buyer.recognizedBonusIncome} onChange={(v) => patchBuyer({ recognizedBonusIncome: v })} />
             </Field>
             <Field label="Other recognized income" tip="Alimony received, rental income, etc.">
-              <NumInput value={buyer.otherRecognizedIncome} onChange={(v) => patchBuyer({ otherRecognizedIncome: v })} />
+              <NumInput readOnly={readOnly} value={buyer.otherRecognizedIncome} onChange={(v) => patchBuyer({ otherRecognizedIncome: v })} />
             </Field>
             <Field
               label="Existing obligations"
               tip="Annual leasing, loans, alimony paid — deducted from recognized income."
             >
-              <NumInput value={buyer.existingAnnualObligations} onChange={(v) => patchBuyer({ existingAnnualObligations: v })} />
+              <NumInput readOnly={readOnly} value={buyer.existingAnnualObligations} onChange={(v) => patchBuyer({ existingAnnualObligations: v })} />
             </Field>
           </div>
 
@@ -398,22 +511,23 @@ export function AffordabilityCalculator() {
               label="Available equity"
               tip="Cash, securities and pension-fund money you can put in."
             >
-              <NumInput value={buyer.availableEquity} onChange={(v) => patchBuyer({ availableEquity: v })} />
+              <NumInput readOnly={readOnly} value={buyer.availableEquity} onChange={(v) => patchBuyer({ availableEquity: v })} />
             </Field>
             <Field label="Purchase price" tip="The price of the property you are checking.">
-              <NumInput value={buyer.purchasePrice} onChange={(v) => patchBuyer({ purchasePrice: v })} />
+              <NumInput readOnly={readOnly} value={buyer.purchasePrice} onChange={(v) => patchBuyer({ purchasePrice: v })} />
             </Field>
             <Field
               label="Bank valuation"
               tip="The bank lends against the LOWER of price and its own valuation. Any gap must be self-funded."
             >
-              <NumInput value={buyer.bankValuation} onChange={(v) => patchBuyer({ bankValuation: v })} />
+              <NumInput readOnly={readOnly} value={buyer.bankValuation} onChange={(v) => patchBuyer({ bankValuation: v })} />
             </Field>
             <Field
               label="Actual mortgage rate"
               tip="The rate you actually pay — used for the housing-cost timeline (not the bank stress test)."
             >
               <NumInput
+                readOnly={readOnly}
                 value={buyer.actualMortgageRate * 100}
                 step={0.05}
                 suffix="%"
@@ -421,7 +535,7 @@ export function AffordabilityCalculator() {
               />
             </Field>
             <Field label="Insurance / year" tip="Building and liability insurance per year.">
-              <NumInput value={buyer.annualInsurance} onChange={(v) => patchBuyer({ annualInsurance: v })} />
+              <NumInput readOnly={readOnly} value={buyer.annualInsurance} onChange={(v) => patchBuyer({ annualInsurance: v })} />
             </Field>
           </div>
 
@@ -444,19 +558,19 @@ export function AffordabilityCalculator() {
                 (4.5–5% calculated interest, 0.7–1% maintenance, etc.).
               </p>
               <Field label="Calculated interest rate">
-                <NumInput value={params.calcRate * 100} step={0.1} suffix="%" onChange={(v) => patchParams({ calcRate: v / 100 })} />
+                <NumInput readOnly={readOnly} value={params.calcRate * 100} step={0.1} suffix="%" onChange={(v) => patchParams({ calcRate: v / 100 })} />
               </Field>
               <Field label="Maintenance & costs">
-                <NumInput value={params.maintenanceRate * 100} step={0.1} suffix="%" onChange={(v) => patchParams({ maintenanceRate: v / 100 })} />
+                <NumInput readOnly={readOnly} value={params.maintenanceRate * 100} step={0.1} suffix="%" onChange={(v) => patchParams({ maintenanceRate: v / 100 })} />
               </Field>
               <Field label="Max affordability ratio">
-                <NumInput value={params.maxAffordability * 100} step={1} suffix="%" onChange={(v) => patchParams({ maxAffordability: v / 100 })} />
+                <NumInput readOnly={readOnly} value={params.maxAffordability * 100} step={1} suffix="%" onChange={(v) => patchParams({ maxAffordability: v / 100 })} />
               </Field>
               <Field label="First-mortgage LTV">
-                <NumInput value={params.firstMortgageLtv * 100} step={1} suffix="%" onChange={(v) => patchParams({ firstMortgageLtv: v / 100 })} />
+                <NumInput readOnly={readOnly} value={params.firstMortgageLtv * 100} step={1} suffix="%" onChange={(v) => patchParams({ firstMortgageLtv: v / 100 })} />
               </Field>
               <Field label="Amortization period">
-                <NumInput value={params.amortizationYears} step={1} suffix="yr" onChange={(v) => patchParams({ amortizationYears: v })} />
+                <NumInput readOnly={readOnly} value={params.amortizationYears} step={1} suffix="yr" onChange={(v) => patchParams({ amortizationYears: v })} />
               </Field>
             </div>
           )}

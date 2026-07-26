@@ -2,10 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 import type { Deal } from "./types";
-import { SEED_DEALS, normalizeInput } from "./defaults";
+import { normalizeInput } from "./defaults";
 import { getSupabaseBrowserClient } from "./supabase/client";
 
-/** Deals held here before the account existed — migrated into Supabase on first load. */
+/** Legacy browser keys — cleared on sign-in so old sample deals never reappear. */
 const LOCAL_KEYS = ["paladior.deals.v2", "galileor.deals.v2"];
 
 /** Remote writes are coalesced so typing in the analysis view doesn't spam the API. */
@@ -37,21 +37,6 @@ function byRecent(a: Deal, b: Deal): number {
   return b.updatedAt - a.updatedAt;
 }
 
-// ---------- local storage (fallback + one-time migration source) ----------
-
-function readLocal(): Deal[] | null {
-  if (typeof window === "undefined") return null;
-  for (const key of LOCAL_KEYS) {
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw) return (JSON.parse(raw) as Deal[]).map(normalizeDeal);
-    } catch {
-      // corrupt or unavailable — try the next key
-    }
-  }
-  return null;
-}
-
 function writeLocal() {
   if (typeof window === "undefined") return;
   try {
@@ -78,7 +63,9 @@ async function ensureLoaded() {
 
   const supabase = getSupabaseBrowserClient();
   if (!supabase) {
-    cache = readLocal() ?? SEED_DEALS.map(normalizeDeal);
+    // No cloud backend: start empty (never seed demo deals).
+    clearLocal();
+    cache = EMPTY;
     status = "ready";
     emit();
     return;
@@ -91,6 +78,7 @@ async function ensureLoaded() {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    clearLocal();
     cache = EMPTY;
     userId = null;
     status = "ready";
@@ -99,6 +87,9 @@ async function ensureLoaded() {
   }
 
   userId = user.id;
+  // Drop any pre-auth browser deals so they cannot leak into this account.
+  clearLocal();
+
   const { data, error } = await supabase
     .from("deals")
     .select("data")
@@ -106,17 +97,15 @@ async function ensureLoaded() {
 
   if (error) {
     console.error("Could not load deals from Supabase:", error.message);
-    cache = readLocal() ?? EMPTY;
+    // Fail empty — never import localStorage/sample deals into a signed-in session.
+    cache = EMPTY;
     status = "ready";
     emit();
     return;
   }
 
-  // New accounts start empty — never auto-seed or import browser deals.
-  const deals = (data ?? []).map((row) => normalizeDeal(row.data as Deal));
-  clearLocal();
-
-  cache = deals.sort(byRecent);
+  // Only what is already in this user's Supabase rows (new accounts → []).
+  cache = (data ?? []).map((row) => normalizeDeal(row.data as Deal)).sort(byRecent);
   status = "ready";
   emit();
 }

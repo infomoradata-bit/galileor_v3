@@ -12,6 +12,12 @@ export type DealRow = {
   updated_at: string;
 };
 
+export type UserSettingsRow = {
+  user_id: string;
+  affordability: Record<string, unknown>;
+  updated_at: string;
+};
+
 /** Hand-written to mirror the shape of `supabase gen types typescript`. */
 export type Database = {
   public: {
@@ -23,6 +29,14 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<DealRow>;
+        Relationships: [];
+      };
+      user_settings: {
+        Row: UserSettingsRow;
+        Insert: Omit<UserSettingsRow, "updated_at"> & {
+          updated_at?: string;
+        };
+        Update: Partial<UserSettingsRow>;
         Relationships: [];
       };
     };
