@@ -1,8 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { SUPABASE_ANON_KEY, SUPABASE_URL, isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  hasValidPreviewCookie,
+  isPreviewGateEnabled,
+  isPreviewPublicPath,
+} from "@/lib/previewGate";
 
-/** Routes that require a session. Everything else stays public. */
+/** Routes that require a Supabase session. Everything else stays public (after preview). */
 const PROTECTED = [
   "/dashboard",
   "/deals",
@@ -28,6 +33,28 @@ function redirectToLogin(request: NextRequest, pathname: string, error?: string)
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // --- Temporary preview gate (remove with PREVIEW_GATE.md) ---------------
+  if (isPreviewGateEnabled()) {
+    const unlocked = hasValidPreviewCookie(request);
+
+    if (!unlocked && !isPreviewPublicPath(pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/preview";
+      url.search = "";
+      if (pathname !== "/") url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+
+    if (unlocked && pathname === "/preview") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
+  // ------------------------------------------------------------------------
+
   const needsAuth = PROTECTED.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   // Fail closed: never open protected routes without a configured Supabase project.

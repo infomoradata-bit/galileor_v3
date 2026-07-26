@@ -21,6 +21,9 @@ npm run dev
 
 Open http://localhost:3000.
 
+While `PALADIOR_ACCESS_CODE` is set, visitors hit the preview gate first.
+See `PREVIEW_GATE.md` to disable or remove it.
+
 ## Supabase setup
 
 1. Run `supabase/schema.sql` in the Supabase SQL editor. It creates the `deals` table

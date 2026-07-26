@@ -158,6 +158,13 @@ export function Sidebar() {
     router.refresh();
   }
 
+  /** Temporary preview gate — remove with PREVIEW_GATE.md */
+  async function lockPreview() {
+    await fetch("/api/preview-access", { method: "DELETE" });
+    router.push("/preview");
+    router.refresh();
+  }
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-[260px] flex-col bg-pine text-white">
       <div className="px-6 pb-5 pt-7">
@@ -213,6 +220,17 @@ export function Sidebar() {
             <path d="m10 17-5-5 5-5M5 12h11" />
           </svg>
           Sign out
+        </button>
+        {/* Temporary preview gate — remove with PREVIEW_GATE.md */}
+        <button
+          onClick={() => void lockPreview()}
+          className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-white/45 transition-colors hover:bg-white/8 hover:text-white"
+        >
+          <svg {...iconProps}>
+            <rect x="5" y="11" width="14" height="10" rx="1.5" />
+            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+          </svg>
+          Lock preview
         </button>
       </div>
     </aside>
