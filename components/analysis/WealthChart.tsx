@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Currency, MortgageResult, RentInvestRow, RepaymentStructure, WealthYearRow } from "@/lib/types";
+import type { BuySelfUseRow, Currency, MortgageResult, RentInvestRow, RepaymentStructure, WealthYearRow } from "@/lib/types";
 import { fmtCompact, fmtMoney } from "@/lib/format";
 import { Card, InfoTip } from "@/components/ui";
 import {
@@ -44,6 +44,7 @@ export function WealthChart({
   mortgage,
   repayment,
   rentInvest,
+  buySelfUse,
   paybackYears,
   currency,
   selectedYear,
@@ -53,6 +54,7 @@ export function WealthChart({
   mortgage: MortgageResult;
   repayment: RepaymentStructure;
   rentInvest: RentInvestRow[];
+  buySelfUse: BuySelfUseRow[];
   /** Chart horizon follows the deal payback period (dynamic). */
   paybackYears: number | null;
   currency: Currency;
@@ -109,17 +111,23 @@ export function WealthChart({
     const initialRentInvest = rentInvest[0]?.downpaymentInvested ?? 0;
     return wealth
       .filter((w) => w.year <= effectiveRange)
-      .map((w) => ({
-        ...w,
-        "Property value": w.propertyValue,
-        "Wealth case: Buy & Invest": w.equity,
-        "Wealth case: Rent & Invest":
-          w.year === 0 ? initialRentInvest : (rentInvest[w.year - 1]?.equityCapital ?? 0),
-        Debt: w.debt,
-        "Owning cost": w.cumOwningCost,
-        "Renting cost": w.cumRentingCost,
-      }));
-  }, [wealth, effectiveRange, rentInvest]);
+      .map((w) => {
+        const bsu = w.year === 0 ? null : buySelfUse[w.year - 1];
+        const buyTotalCapital = bsu
+          ? bsu.equity + bsu.buyRentSavingsInvested + bsu.buyRentSavingsReturn
+          : w.equity;
+        return {
+          ...w,
+          "Property value": w.propertyValue,
+          "Wealth case: Buy & Invest": buyTotalCapital,
+          "Wealth case: Rent & Invest":
+            w.year === 0 ? initialRentInvest : (rentInvest[w.year - 1]?.equityCapital ?? 0),
+          Debt: w.debt,
+          "Owning cost": w.cumOwningCost,
+          "Renting cost": w.cumRentingCost,
+        };
+      });
+  }, [wealth, effectiveRange, rentInvest, buySelfUse]);
 
   const selected = wealth.find((row) => row.year === selectedYear) ?? null;
   const selectedCalendarYear = selected?.calendarYear ?? null;
@@ -198,7 +206,7 @@ export function WealthChart({
       <div className="mb-3 grid grid-cols-1 items-center gap-2 md:grid-cols-[1fr_auto_1fr]">
         <h2 className="flex items-center gap-1.5 text-sm font-semibold tracking-tight md:justify-self-start">
           Wealth Development
-          <InfoTip text="Chart horizon follows the deal payback period (dynamic). Compare Buy & Invest vs Rent & Invest. The amber line marks when mandatory amortisation ends." />
+          <InfoTip text="Chart horizon follows the deal payback period (dynamic). Buy & Invest tracks Buy & Self-Use total capital (equity + invested buy-rent savings + return). Compare with Rent & Invest. The amber line marks when mandatory amortisation ends." />
         </h2>
         <div className="flex flex-wrap items-center justify-center gap-1 text-[11px] md:justify-self-center">
           {SERIES.map((series) => {

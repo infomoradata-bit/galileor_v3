@@ -13,11 +13,6 @@ import { KpiCard, kpiIcons } from "@/components/analysis/KpiCard";
 import { SummaryBoxes } from "@/components/analysis/SummaryBoxes";
 import { WealthChart } from "@/components/analysis/WealthChart";
 import { DecisionAnalysis } from "@/components/analysis/DecisionAnalysis";
-import {
-  RecommendationCard,
-  StressTestCard,
-  NotesCard,
-} from "@/components/analysis/BottomSection";
 
 function labelForPayback(years: number | null): { text: string; tone: "positive" | "amber" | "negative" } {
   if (years === null) return { text: "Open-ended", tone: "negative" };
@@ -106,10 +101,6 @@ export function DealAnalysisView({
 
   function patchDeal(patch: Partial<Deal>) {
     persist({ ...deal, ...patch });
-  }
-
-  function patchNotes(notes: string) {
-    patchDeal({ notes });
   }
 
   async function share() {
@@ -380,6 +371,7 @@ export function DealAnalysisView({
             mortgage={a.mortgage}
             repayment={a.repayment}
             rentInvest={a.rentInvest}
+            buySelfUse={a.buySelfUse}
             paybackYears={a.metrics.paybackYears}
             currency={cur}
             selectedYear={clampedAnalysisYear}
@@ -396,13 +388,6 @@ export function DealAnalysisView({
             year={clampedAnalysisYear}
             onYearChange={setAnalysisYear}
           />
-        </div>
-
-        {/* Recommendation, stress test, notes */}
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <RecommendationCard analysis={a} />
-          <StressTestCard analysis={a} currency={cur} />
-          <NotesCard notes={deal.notes} onNotesChange={patchNotes} />
         </div>
       </div>
     </div>
